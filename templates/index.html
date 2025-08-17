@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Intrusion Detection System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#">
+                <i class="bi bi-shield-check me-2"></i>Network Attack Detection System
+            </a>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="text-center mb-5">
+                    <h2 class="fw-bold">Welcome to Network Attack Detection System</h2>
+                    <p class="lead">Real-time network traffic analysis and attack detection with Random Forest Classifier</p>
+                    <p class="text-muted">Choose your analysis method below</p>
+                </div>
+
+                <!-- Analysis Mode Tabs -->
+                <ul class="nav nav-pills mb-4 justify-content-center" id="analysisTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active me-3" id="pcap-tab" data-bs-toggle="pill" data-bs-target="#pcap" type="button">
+                            <i class="bi bi-file-earmark-binary me-2"></i>PCAP Analysis
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="live-tab" data-bs-toggle="pill" data-bs-target="#live" type="button">
+                            <i class="bi bi-activity me-2"></i>Live Monitoring
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- Tab Content -->
+                <div class="tab-content" id="analysisTabContent">
+                    <!-- PCAP Analysis Tab -->
+                    <div class="tab-pane fade show active" id="pcap" role="tabpanel">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <h4 class="text-center mb-4">Network Classification Analysis</h4>
+                                <form action="/main/analyst.py" method="POST" enctype="multipart/form-data">
+                                    <div class="mb-4 text-center">
+                                        <div class="upload-area p-4 border rounded-3 mb-3">
+                                            <i class="bi bi-cloud-upload display-4 text-primary"></i>
+                                            <p class="mt-2">Drag and drop your PCAP file here or click to browse</p>
+                                            <input type="file" class="form-control" id="pcapFile" name="pcapFile" accept=".pcap,.pcapng" required>
+                                        </div>
+                                        <small class="text-muted">Supported formats: .pcap, .pcapng</small>
+                                    </div>
+                                    <div class="text-center">
+                                        <button type="submit" class="btn btn-primary px-5">
+                                            <i class="bi bi-search me-2"></i>Analyze Network Traffic
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Monitoring Tab -->
+                    <div class="tab-pane fade" id="live" role="tabpanel">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <div class="row justify-content-center">
+                                    <div class="col-md-8">
+                                        <h4 class="text-center mb-4">Login to Monitor</h4>
+                                        <form action="/main/live-monitor.py" method="POST">
+                                            <div class="form-floating mb-3">
+                                                <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
+                                                <label for="username">SSH Username</label>
+                                                <small class="text-muted">Default: root</small>
+                                                <small class="text-muted">Port: 22</small>
+                                            </div>
+                                            <div class="form-floating mb-3">
+                                                <input type="text" class="form-control" id="ip" name="ip" placeholder="IP Address" required>
+                                                <label for="ip">SSH IP Address</label>
+                                                <small class="text-muted">Default: 127.0.0.1</small>
+                                            </div>
+                                            <div class="form-floating mb-4">
+                                                <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                                                <label for="password">Password</label>
+                                            </div>
+                                            <div class="d-grid">
+                                                <button type="submit" class="btn btn-primary">
+                                                    <i class="bi bi-box-arrow-in-right me-2"></i>Login to Monitor
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .upload-area {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover {
+            background-color: #f8f9fa;
+        }
+        .nav-pills .nav-link {
+            border-radius: 20px;
+            padding: 10px 20px;
+        }
+        .nav-pills .nav-link.active {
+            background-color: #0d6efd;
+        }
+    </style>
+</body>
+</html>

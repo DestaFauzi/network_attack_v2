@@ -1,6 +1,44 @@
 from scapy.all import *
 import re
 
+# Define rules_list yang dibutuhkan analyst.py
+rules_list = [
+    {
+        'name': 'TCP_SYN_Flood',
+        'severity': 'high',
+        'description': 'Possible TCP SYN Flood Attack detected',
+        'conditions': {
+            'protocol': 'TCP',
+            'flags': 2  # SYN flag
+        }
+    },
+    {
+        'name': 'ICMP_Flood',
+        'severity': 'medium',
+        'description': 'Possible ICMP Flood Attack detected',
+        'conditions': {
+            'protocol': 'ICMP'
+        }
+    },
+    {
+        'name': 'Port_Scan',
+        'severity': 'medium',
+        'description': 'Possible Port Scan detected',
+        'conditions': {
+            'dst_port': [20, 21, 22, 23, 25, 53, 80, 443, 445]
+        }
+    },
+    {
+        'name': 'HTTP_Flood',
+        'severity': 'medium',
+        'description': 'Possible HTTP Flood Attack detected',
+        'conditions': {
+            'protocol': 'TCP',
+            'dst_port': 80
+        }
+    }
+]
+
 def analyze_packet(packet):
     alerts = []
     

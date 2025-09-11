@@ -1,0 +1,24 @@
+/* Basic styling for NIDS */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.upload-area {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px dashed #dee2e6;
+}
+
+.upload-area:hover {
+    background-color: #f8f9fa;
+    border-color: #0d6efd;
+}
+
+.nav-pills .nav-link {
+    border-radius: 20px;
+    padding: 10px 20px;
+}
+
+.nav-pills .nav-link.active {
+    background-color: #0d6efd;
+}

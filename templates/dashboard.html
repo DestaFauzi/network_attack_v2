@@ -1,0 +1,1592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NIDS Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">NIDS Network Attack Detector</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#"><i class="fas fa-home"></i> Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#"><i class="fas fa-history"></i> Log History</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#"><i class="fas fa-cog"></i> Settings</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Analysis Results Section -->
+        <div id="analysisResults" class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5><i class="fas fa-chart-line me-2"></i>Analysis Results</h5>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="exportExecutiveSummary()">
+                                <i class="fas fa-file-pdf me-1"></i>Executive Summary
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="exportDetailedReport()">
+                                <i class="fas fa-file-alt me-1"></i>Detailed Report
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body" id="resultsContent">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-info-circle fa-2x mb-3"></i>
+                            <p>No analysis results available. Please upload and analyze a PCAP file first.</p>
+                            <a href="/" class="btn btn-primary">Upload PCAP File</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white mb-4">
+                    <div class="card-body">
+                        <h5><i class="fas fa-shield-alt"></i> Total Attacks</h5>
+                        <h2 id="totalAttacks">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-white mb-4">
+                    <div class="card-body">
+                        <h5><i class="fas fa-exclamation-triangle"></i> Active Threats</h5>
+                        <h2 id="activeThreats">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white mb-4">
+                    <div class="card-body">
+                        <h5><i class="fas fa-check-circle"></i> Blocked Attacks</h5>
+                        <h2 id="blockedAttacks">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white mb-4">
+                    <div class="card-body">
+                        <h5><i class="fas fa-network-wired"></i> Network Status</h5>
+                        <h2 id="networkStatus">Secure</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4" id="timelineSection">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5><i class="fas fa-chart-line"></i> Attack Timeline</h5>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="toggleSection('timelineSection')">
+                            <i class="fas fa-eye-slash"></i> Hide
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="attackChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card" id="recentAttacksCard">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5><i class="fas fa-list"></i> Recent Attacks</h5>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="toggleSection('recentAttacksCard')">
+                            <i class="fas fa-eye-slash"></i> Hide
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group" id="recentAttacks">
+                            <!-- Attack entries will be dynamically added here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row mt-4">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-pie"></i> Attack Types Distribution</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="ruleChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-bar"></i> Severity Levels</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="severityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-trophy"></i> Top 5 Active Threats</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="topThreatsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- New row for additional charts -->
+        <div class="row mt-4">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-server"></i> Top Source IPs</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="sourceIpChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-bullseye"></i> Top Destination IPs</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="destIpChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-network-wired"></i> Protocol Distribution</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="protocolChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Initialize chart
+        const ctx = document.getElementById('attackChart').getContext('2d');
+        const attackChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Attacks per Hour',
+                    data: [],
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }]
+            }
+        });
+
+        // Function to update dashboard data (to be implemented)
+        function updateDashboard() {
+            // Add your real-time data update logic here
+        }
+
+        // Update dashboard every 30 seconds
+        setInterval(updateDashboard, 30000);
+    </script>
+    
+    <script>
+        // Load analysis results from sessionStorage
+        // Load results when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const results = sessionStorage.getItem('analysisResults');
+            const filename = sessionStorage.getItem('analysisFilename');
+            
+            console.log('DOMContentLoaded - Analysis Results:', results);
+            console.log('DOMContentLoaded - Filename:', filename);
+            
+            if (results) {
+                try {
+                    const data = JSON.parse(results);
+                    console.log('Parsed analysis data:', data);
+                    console.log('Alerts data:', data.alerts);
+                    console.log('Summary data:', data.summary);
+                    displayResults(data);
+                } catch (error) {
+                    console.error('Error parsing analysis results:', error);
+                }
+            } else {
+                console.log('No analysis results found in sessionStorage');
+            }
+        });
+        const filename = sessionStorage.getItem('analysisFilename');
+        
+        if (results) {
+            const data = JSON.parse(results);
+            displayResults(data, filename);
+            
+            // Update dashboard stats
+            document.getElementById('totalAttacks').textContent = data.summary.total_alerts || 0;
+            document.getElementById('activeThreats').textContent = Object.keys(data.summary.attack_types || {}).length;
+        }
+        
+        function displayResults(data) {
+            const resultsContent = document.getElementById('resultsContent');
+            
+            // Set currentAlertsData untuk pagination
+            currentAlertsData = data.alerts || [];
+            
+            // Update summary cards FIRST
+            const totalAlertsCount = data.summary.total_alerts || 0;
+            const activeThreatsCount = Object.keys(data.summary.attack_types || {}).length;
+            
+            // Update Total Attacks
+            const totalAttacksElement = document.getElementById('totalAttacks');
+            if (totalAttacksElement) {
+                totalAttacksElement.textContent = totalAlertsCount;
+            }
+            
+            // Update Active Threats
+            const activeThreatsElement = document.getElementById('activeThreats');
+            if (activeThreatsElement) {
+                activeThreatsElement.textContent = activeThreatsCount;
+            }
+            
+            // Get filename and file info from sessionStorage or data
+            const filename = sessionStorage.getItem('analysisFilename') || data.summary.filename || 'Unknown File';
+            
+            // Calculate file size from total packets (estimate)
+            let fileSize = 'Unknown';
+            if (data.summary.file_size) {
+                fileSize = data.summary.file_size;
+            } else if (data.summary.total_packets) {
+                // Estimate file size based on packets (rough calculation: ~1KB per packet)
+                const estimatedBytes = data.summary.total_packets * 1024;
+                if (estimatedBytes > 1024 * 1024) {
+                    fileSize = `~${(estimatedBytes / (1024 * 1024)).toFixed(2)} MB (estimated)`;
+                } else if (estimatedBytes > 1024) {
+                    fileSize = `~${(estimatedBytes / 1024).toFixed(2)} KB (estimated)`;
+                } else {
+                    fileSize = `~${estimatedBytes} bytes (estimated)`;
+                }
+            }
+            
+            const analysisTime = data.summary.analysis_time || new Date().toLocaleString();
+            
+            // Generate HTML content for results
+            let html = `
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-file"></i> File Information</h5>
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Filename:</strong> ${filename}</p>
+                                <p><strong>Total Packets:</strong> ${data.summary.total_packets || 0}</p>
+                                <p><strong>File Size:</strong> ${fileSize}</p>
+                                <p><strong>Analysis Time:</strong> ${analysisTime}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-network-wired"></i> Network Summary</h5>
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Source IPs:</strong> ${data.summary.unique_ips?.source || 0}</p>
+                                <p><strong>Destination IPs:</strong> ${data.summary.unique_ips?.destination || 0}</p>
+                                <p><strong>Protocols:</strong> ${Object.keys(data.summary.protocols || {}).join(', ') || 'Unknown'}</p>
+                                <p><strong>Total Alerts:</strong> <span class="badge bg-danger">${totalAlertsCount}</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add alerts table if there are alerts
+            if (data.alerts && data.alerts.length > 0) {
+                html += `
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5><i class="fas fa-exclamation-triangle"></i> Security Alerts (${data.alerts.length} total)</h5>
+                            <div class="d-flex align-items-center">
+                                <label class="me-2">Show:</label>
+                                <select id="alertsPerPage" class="form-select form-select-sm" style="width: auto;" onchange="updateAlertsDisplay()">
+                                    <option value="10">10</option>
+                                    <option value="20" selected>20</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                                <span class="ms-2 text-muted">per page</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Rule</th>
+                                            <th>Severity</th>
+                                            <th>Source IP</th>
+                                            <th>Dest IP</th>
+                                            <th>Protocol</th>
+                                            <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="alertsTableBody">
+                                        <!-- Alerts will be populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <nav aria-label="Alerts pagination">
+                                <ul class="pagination pagination-sm justify-content-center" id="alertsPagination">
+                                    <!-- Pagination will be populated by JavaScript -->
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="alert alert-success" role="alert">
+                        <i class="fas fa-check-circle me-2"></i>
+                        No security threats detected in this PCAP file.
+                    </div>
+                `;
+            }
+            
+            resultsContent.innerHTML = html;
+            
+            // Initialize pagination and charts AFTER HTML is set
+            if (data.alerts && data.alerts.length > 0) {
+                console.log('Initializing alerts table with', data.alerts.length, 'alerts');
+                console.log('currentAlertsData set to:', currentAlertsData);
+                
+                // Reset pagination to first page
+                currentPage = 1;
+                
+                // Wait a bit for DOM to update
+                setTimeout(() => {
+                    renderAlertsTable();
+                    renderPagination();
+                    createRuleDistributionChart(data);
+                    createSeverityChart(data.alerts);
+                    createTopThreatsChart(data.alerts);
+                    createSourceIpChart(data.alerts);
+                    createDestIpChart(data.alerts);
+                    createProtocolChart(data.alerts);
+                    updateTimelineChart(data.alerts);
+                }, 100);
+            }
+            
+            // Auto-hide timeline sections for PCAP analysis
+            hideTimelineOnAnalysis();
+        }
+        // Update fungsi displayResults (sekitar baris 140)
+function updateTimelineChart(alerts) {
+    const timeGroups = {};
+    alerts.forEach(alert => {
+        const hour = new Date(alert.timestamp).getHours();
+        timeGroups[hour] = (timeGroups[hour] || 0) + 1;
+    });
+    
+    const labels = Object.keys(timeGroups).sort((a, b) => a - b);
+    const data = labels.map(hour => timeGroups[hour]);
+    
+    attackChart.data.labels = labels.map(h => `${h}:00`);
+    attackChart.data.datasets[0].data = data;
+    attackChart.update();
+}    </script>
+    
+    <script>
+        function createRuleDistributionChart(data) {
+            const ruleCtx = document.getElementById('ruleChart').getContext('2d');
+            const ruleLabels = Object.keys(data.summary.attack_types || {});
+            const ruleCounts = Object.values(data.summary.attack_types || {});
+            
+            new Chart(ruleCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ruleLabels,
+                    datasets: [{
+                        data: ruleCounts,
+                        backgroundColor: [
+                            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+                            '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Attack Types Distribution'
+                        }
+                    }
+                }
+            });
+        }
+        function createSeverityChart(alerts) {
+            const severityCount = { high: 0, medium: 0, low: 0 };
+            alerts.forEach(alert => {
+                severityCount[alert.severity] = (severityCount[alert.severity] || 0) + 1;
+            });
+            
+            const severityCtx = document.getElementById('severityChart');
+            if (!severityCtx) {
+                console.error('severityChart canvas not found');
+                return;
+            }
+            
+            // Set canvas size to match other charts
+            severityCtx.style.height = '300px';
+            
+            // Destroy existing chart if exists
+            if (window.severityChart && typeof window.severityChart.destroy === 'function') {
+                window.severityChart.destroy();
+            }
+            
+            window.severityChart = new Chart(severityCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['High', 'Medium', 'Low'],
+                    datasets: [{
+                        label: 'Alert Count',
+                        data: [severityCount.high, severityCount.medium, severityCount.low],
+                        backgroundColor: ['#dc3545', '#ffc107', '#17a2b8'],
+                        borderColor: ['#dc3545', '#ffc107', '#17a2b8'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            left: 10,
+                            right: 10,
+                            top: 10,
+                            bottom: 10
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Severity Levels Distribution',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            },
+                            padding: {
+                                bottom: 20
+                            }
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 0,
+                                padding: 5
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    // Add animation to match other charts
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            });
+        }
+        function createTopThreatsChart(alerts) {
+            console.log('Creating Top Threats Chart with alerts:', alerts);
+            
+            // Count attacks by rule with better data handling
+            const ruleCount = {};
+            alerts.forEach(alert => {
+                // Try multiple possible field names for rule
+                const ruleName = alert.rule_name || alert.rule || alert.msg || alert.signature || 'Unknown Rule';
+                ruleCount[ruleName] = (ruleCount[ruleName] || 0) + 1;
+            });
+            
+            console.log('Rule counts:', ruleCount);
+            
+            // Sort and get top 5
+            const sortedRules = Object.entries(ruleCount)
+                .sort(([,a], [,b]) => b - a)
+                .slice(0, 5);
+            
+            console.log('Top 5 sorted rules:', sortedRules);
+            
+            if (sortedRules.length === 0) {
+                const topThreatsCtx = document.getElementById('topThreatsChart');
+                if (topThreatsCtx) {
+                    const ctx = topThreatsCtx.getContext('2d');
+                    ctx.clearRect(0, 0, topThreatsCtx.width, topThreatsCtx.height);
+                    ctx.font = '14px Arial';
+                    ctx.fillStyle = '#666';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('No threat data available', topThreatsCtx.width/2, topThreatsCtx.height/2);
+                }
+                return;
+            }
+            
+            // Prepare labels and data
+            const fullLabels = sortedRules.map(([rule]) => rule);
+            const shortLabels = sortedRules.map(([rule]) => {
+                // Truncate long rule names for display but keep them readable
+                if (rule.length > 25) {
+                    return rule.substring(0, 25) + '...';
+                }
+                return rule;
+            });
+            const data = sortedRules.map(([,count]) => count);
+            
+            const topThreatsCtx = document.getElementById('topThreatsChart');
+            if (!topThreatsCtx) {
+                console.error('topThreatsChart canvas not found');
+                return;
+            }
+            
+            // Set canvas size to ensure labels are visible
+            topThreatsCtx.style.height = '300px';
+            
+            // Destroy existing chart if exists
+            if (window.topThreatsChart && typeof window.topThreatsChart.destroy === 'function') {
+                window.topThreatsChart.destroy();
+            }
+            
+            window.topThreatsChart = new Chart(topThreatsCtx, {
+                type: 'bar',
+                data: {
+                    labels: shortLabels,
+                    datasets: [{
+                        label: 'Attack Count',
+                        data: data,
+                        backgroundColor: [
+                            '#FF6384',
+                            '#36A2EB', 
+                            '#FFCE56',
+                            '#4BC0C0',
+                            '#9966FF'
+                        ],
+                        borderColor: [
+                            '#FF6384',
+                            '#36A2EB',
+                            '#FFCE56', 
+                            '#4BC0C0',
+                            '#9966FF'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y', // Horizontal bar chart
+                    layout: {
+                        padding: {
+                            left: 10,
+                            right: 10,
+                            top: 10,
+                            bottom: 10
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Top 5 Most Active Attack Rules',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            },
+                            padding: {
+                                bottom: 20
+                            }
+                        },
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: function(context) {
+                                    // Show full rule name in tooltip
+                                    const index = context[0].dataIndex;
+                                    return fullLabels[index];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                maxRotation: 0,
+                                padding: 5
+                            },
+                            grid: {
+                                display: false
+                            },
+                            // Ensure enough space for labels
+                            afterFit: function(scale) {
+                                scale.width = Math.max(scale.width, 120);
+                            }
+                        }
+                    },
+                    // Add animation to make chart more visible
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            });
+            
+            console.log('Top Threats Chart created successfully with labels:', shortLabels);
+        }
+        
+        // New function for Source IP chart
+        function createSourceIpChart(alerts) {
+            console.log('Creating Source IP Chart with alerts:', alerts);
+            
+            // Count attacks by source IP
+            const sourceIpCount = {};
+            alerts.forEach(alert => {
+                const sourceIp = alert.src_ip || alert.source_ip || 'Unknown';
+                sourceIpCount[sourceIp] = (sourceIpCount[sourceIp] || 0) + 1;
+            });
+            
+            // Sort and get top 10
+            const sortedSourceIps = Object.entries(sourceIpCount)
+                .sort(([,a], [,b]) => b - a)
+                .slice(0, 10);
+            
+            if (sortedSourceIps.length === 0) {
+                const sourceIpCtx = document.getElementById('sourceIpChart');
+                if (sourceIpCtx) {
+                    const ctx = sourceIpCtx.getContext('2d');
+                    ctx.clearRect(0, 0, sourceIpCtx.width, sourceIpCtx.height);
+                    ctx.font = '14px Arial';
+                    ctx.fillStyle = '#666';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('No source IP data available', sourceIpCtx.width/2, sourceIpCtx.height/2);
+                }
+                return;
+            }
+            
+            const labels = sortedSourceIps.map(([ip]) => ip);
+            const data = sortedSourceIps.map(([,count]) => count);
+            
+            const sourceIpCtx = document.getElementById('sourceIpChart');
+            if (!sourceIpCtx) {
+                console.error('sourceIpChart canvas not found');
+                return;
+            }
+            
+            // Destroy existing chart if exists
+            if (window.sourceIpChart && typeof window.sourceIpChart.destroy === 'function') {
+                window.sourceIpChart.destroy();
+            }
+            
+            window.sourceIpChart = new Chart(sourceIpCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Attack Count',
+                        data: data,
+                        backgroundColor: '#FF6384',
+                        borderColor: '#FF6384',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Top 10 Source IPs',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // New function for Destination IP chart
+        function createDestIpChart(alerts) {
+            console.log('Creating Destination IP Chart with alerts:', alerts);
+            
+            // Count attacks by destination IP
+            const destIpCount = {};
+            alerts.forEach(alert => {
+                const destIp = alert.dst_ip || alert.dest_ip || alert.destination_ip || 'Unknown';
+                destIpCount[destIp] = (destIpCount[destIp] || 0) + 1;
+            });
+            
+            // Sort and get top 10
+            const sortedDestIps = Object.entries(destIpCount)
+                .sort(([,a], [,b]) => b - a)
+                .slice(0, 10);
+            
+            if (sortedDestIps.length === 0) {
+                const destIpCtx = document.getElementById('destIpChart');
+                if (destIpCtx) {
+                    const ctx = destIpCtx.getContext('2d');
+                    ctx.clearRect(0, 0, destIpCtx.width, destIpCtx.height);
+                    ctx.font = '14px Arial';
+                    ctx.fillStyle = '#666';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('No destination IP data available', destIpCtx.width/2, destIpCtx.height/2);
+                }
+                return;
+            }
+            
+            const labels = sortedDestIps.map(([ip]) => ip);
+            const data = sortedDestIps.map(([,count]) => count);
+            
+            const destIpCtx = document.getElementById('destIpChart');
+            if (!destIpCtx) {
+                console.error('destIpChart canvas not found');
+                return;
+            }
+            
+            // Destroy existing chart if exists
+            if (window.destIpChart && typeof window.destIpChart.destroy === 'function') {
+                window.destIpChart.destroy();
+            }
+            
+            window.destIpChart = new Chart(destIpCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Attack Count',
+                        data: data,
+                        backgroundColor: '#36A2EB',
+                        borderColor: '#36A2EB',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Top 10 Destination IPs',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // New function for Protocol chart
+        function createProtocolChart(alerts) {
+            console.log('Creating Protocol Chart with alerts:', alerts);
+            
+            // Count attacks by protocol
+            const protocolCount = {};
+            alerts.forEach(alert => {
+                const protocol = alert.protocol || alert.proto || 'Unknown';
+                protocolCount[protocol] = (protocolCount[protocol] || 0) + 1;
+            });
+            
+            if (Object.keys(protocolCount).length === 0) {
+                const protocolCtx = document.getElementById('protocolChart');
+                if (protocolCtx) {
+                    const ctx = protocolCtx.getContext('2d');
+                    ctx.clearRect(0, 0, protocolCtx.width, protocolCtx.height);
+                    ctx.font = '14px Arial';
+                    ctx.fillStyle = '#666';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('No protocol data available', protocolCtx.width/2, protocolCtx.height/2);
+                }
+                return;
+            }
+            
+            const labels = Object.keys(protocolCount);
+            const data = Object.values(protocolCount);
+            
+            const protocolCtx = document.getElementById('protocolChart');
+            if (!protocolCtx) {
+                console.error('protocolChart canvas not found');
+                return;
+            }
+            
+            // Destroy existing chart if exists
+            if (window.protocolChart && typeof window.protocolChart.destroy === 'function') {
+                window.protocolChart.destroy();
+            }
+            
+            window.protocolChart = new Chart(protocolCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Attack Count',
+                        data: data,
+                        backgroundColor: [
+                            '#FFCE56',
+                            '#4BC0C0',
+                            '#9966FF',
+                            '#FF9F40',
+                            '#FF6384',
+                            '#36A2EB'
+                        ],
+                        borderColor: [
+                            '#FFCE56',
+                            '#4BC0C0',
+                            '#9966FF',
+                            '#FF9F40',
+                            '#FF6384',
+                            '#36A2EB'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Protocol Distribution',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+    
+    <script>
+// ... existing code ...
+function exportExecutiveSummary() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const results = JSON.parse(sessionStorage.getItem('analysisResults'));
+    const filename = sessionStorage.getItem('analysisFilename');
+    
+    let yPos = 20;
+    const margin = 20;
+    const pageWidth = doc.internal.pageSize.width;
+    
+    // Function untuk membuat tabel sederhana
+    function addTable(headers, data, startY) {
+        let currentY = startY;
+        const colWidth = (pageWidth - 40) / headers.length;
+        
+        // Header tabel
+        doc.setFillColor(200, 200, 200);
+        doc.rect(margin, currentY, pageWidth - 40, 8, 'F');
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'bold');
+        
+        headers.forEach((header, i) => {
+            doc.text(header, margin + 2 + (i * colWidth), currentY + 6);
+        });
+        
+        currentY += 8;
+        doc.setFont(undefined, 'normal');
+        
+        // Data rows
+        data.forEach((row, rowIndex) => {
+            if (rowIndex % 2 === 0) {
+                doc.setFillColor(245, 245, 245);
+                doc.rect(margin, currentY, pageWidth - 40, 7, 'F');
+            }
+            
+            row.forEach((cell, colIndex) => {
+                doc.text(String(cell), margin + 2 + (colIndex * colWidth), currentY + 5);
+            });
+            currentY += 7;
+        });
+        
+        return currentY + 10;
+    }
+    
+    // Function untuk membuat bar chart horizontal sederhana
+    function addBarChart(title, data, startY) {
+        let currentY = startY;
+        
+        doc.setFontSize(12);
+        doc.setFont(undefined, 'bold');
+        doc.text(title, margin, currentY);
+        currentY += 15;
+        
+        const maxValue = Math.max(...Object.values(data));
+        const maxBarWidth = 80;
+        
+        Object.entries(data).forEach(([label, value]) => {
+            // Label
+            doc.setFontSize(9);
+            doc.text(label, margin, currentY + 4);
+            
+            // Bar
+            const barWidth = (value / maxValue) * maxBarWidth;
+            doc.setFillColor(100, 150, 200);
+            doc.rect(margin + 60, currentY, barWidth, 6, 'F');
+            
+            // Value
+            doc.text(String(value), margin + 65 + barWidth, currentY + 4);
+            
+            currentY += 10;
+        });
+        
+        return currentY + 10;
+    }
+    
+    // Header
+    doc.setFillColor(50, 50, 150);
+    doc.rect(0, 0, pageWidth, 35, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont(undefined, 'bold');
+    doc.text('NIDS Analysis - Executive Summary', margin, 22);
+    
+    yPos = 45;
+    doc.setTextColor(0, 0, 0);
+    
+    // File Information Box
+    doc.setFillColor(240, 240, 240);
+    doc.rect(margin, yPos, pageWidth - 40, 20, 'F');
+    doc.setFontSize(10);
+    doc.text(`File: ${filename}`, margin + 5, yPos + 8);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, margin + 5, yPos + 15);
+    
+    yPos += 30;
+    
+    // Summary Statistics Table
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('Network Traffic Summary', margin, yPos);
+    yPos += 10;
+    
+    const summaryHeaders = ['Metric', 'Value'];
+    const summaryData = [
+        ['Total Packets', results.summary.total_packets || 0],
+        ['Security Alerts', results.summary.total_alerts || 0],
+        ['Source IPs', results.summary.unique_ips?.source || 0],
+        ['Destination IPs', results.summary.unique_ips?.destination || 0]
+    ];
+    
+    yPos = addTable(summaryHeaders, summaryData, yPos);
+    
+    // Attack Types Chart
+    if (results.summary.attack_types && Object.keys(results.summary.attack_types).length > 0) {
+        if (yPos > 200) {
+            doc.addPage();
+            yPos = 20;
+        }
+        
+        yPos = addBarChart('Attack Types Distribution', results.summary.attack_types, yPos);
+    }
+    
+    // Top Source IPs
+    if (results.alerts && results.alerts.length > 0) {
+        if (yPos > 180) {
+            doc.addPage();
+            yPos = 20;
+        }
+        
+        const sourceIpCount = {};
+        results.alerts.forEach(alert => {
+            const sourceIp = alert.src_ip || alert.source_ip || 'Unknown';
+            sourceIpCount[sourceIp] = (sourceIpCount[sourceIp] || 0) + 1;
+        });
+        
+        const topSourceIps = Object.entries(sourceIpCount)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 5)
+            .reduce((obj, [ip, count]) => {
+                obj[ip] = count;
+                return obj;
+            }, {});
+        
+        if (Object.keys(topSourceIps).length > 0) {
+            yPos = addBarChart('Top Source IP Addresses', topSourceIps, yPos);
+        }
+    }
+    
+    // Severity Analysis Table
+    if (results.alerts && results.alerts.length > 0) {
+        if (yPos > 150) {
+            doc.addPage();
+            yPos = 20;
+        }
+        
+        const severityCount = {};
+        results.alerts.forEach(alert => {
+            const severity = alert.severity || 'Unknown';
+            severityCount[severity] = (severityCount[severity] || 0) + 1;
+        });
+        
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.text('Threat Severity Analysis', margin, yPos);
+        yPos += 10;
+        
+        const severityHeaders = ['Severity Level', 'Count', 'Percentage'];
+        const totalAlerts = results.alerts.length;
+        const severityData = Object.entries(severityCount).map(([severity, count]) => [
+            severity,
+            count,
+            `${Math.round((count / totalAlerts) * 100)}%`
+        ]);
+        
+        yPos = addTable(severityHeaders, severityData, yPos);
+    }
+    
+    // Protocol Distribution
+    if (results.alerts && results.alerts.length > 0) {
+        if (yPos > 150) {
+            doc.addPage();
+            yPos = 20;
+        }
+        
+        const protocolCount = {};
+        results.alerts.forEach(alert => {
+            const protocol = alert.protocol || 'Unknown';
+            protocolCount[protocol] = (protocolCount[protocol] || 0) + 1;
+        });
+        
+        yPos = addBarChart('Protocol Distribution', protocolCount, yPos);
+    }
+    
+    // Recommendations - Dynamic based on analysis
+    if (yPos > 200) {
+        doc.addPage();
+        yPos = 20;
+    }
+    
+    doc.setFillColor(50, 150, 50);
+    doc.rect(margin, yPos, pageWidth - 40, 12, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'bold');
+    doc.text('Security Recommendations', margin + 5, yPos + 8);
+    
+    yPos += 20;
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    
+    // Generate dynamic recommendations based on analysis
+    const recommendations = [];
+    
+    // Analyze source IPs for high activity
+    if (results.alerts && results.alerts.length > 0) {
+        const sourceIpCount = {};
+        const attackTypes = {};
+        const severityCount = {};
+        const protocolCount = {};
+        const destIpCount = {};
+        
+        results.alerts.forEach(alert => {
+            // Count source IPs
+            const sourceIp = alert.src_ip || alert.source_ip || 'Unknown';
+            sourceIpCount[sourceIp] = (sourceIpCount[sourceIp] || 0) + 1;
+            
+            // Count attack types
+            const attackType = alert.rule_name || 'Unknown';
+            attackTypes[attackType] = (attackTypes[attackType] || 0) + 1;
+            
+            // Count severity levels
+            const severity = alert.severity || 'Unknown';
+            severityCount[severity] = (severityCount[severity] || 0) + 1;
+            
+            // Count protocols
+            const protocol = alert.protocol || 'Unknown';
+            protocolCount[protocol] = (protocolCount[protocol] || 0) + 1;
+            
+            // Count destination IPs
+            const destIp = alert.dst_ip || alert.dest_ip || 'Unknown';
+            destIpCount[destIp] = (destIpCount[destIp] || 0) + 1;
+        });
+        
+        // Recommendation based on high-activity source IPs
+        const topSourceIps = Object.entries(sourceIpCount)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 3);
+        
+        if (topSourceIps.length > 0 && topSourceIps[0][1] > 5) {
+            recommendations.push(`1. CRITICAL: Block or monitor IP ${topSourceIps[0][0]} (${topSourceIps[0][1]} attacks detected)`);
+            if (topSourceIps.length > 1) {
+                recommendations.push(`2. Monitor suspicious IPs: ${topSourceIps.slice(1).map(([ip, count]) => `${ip} (${count})`).join(', ')}`);
+            }
+        }
+        
+        // Recommendations based on attack types
+        const topAttackTypes = Object.entries(attackTypes)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 3);
+        
+        topAttackTypes.forEach(([attackType, count]) => {
+            if (attackType.toLowerCase().includes('dos') || attackType.toLowerCase().includes('ddos')) {
+                recommendations.push(`${recommendations.length + 1}. Implement DDoS protection and rate limiting (${count} DoS attacks detected)`);
+            } else if (attackType.toLowerCase().includes('sql') || attackType.toLowerCase().includes('injection')) {
+                recommendations.push(`${recommendations.length + 1}. Strengthen input validation and use parameterized queries (${count} injection attempts)`);
+            } else if (attackType.toLowerCase().includes('xss') || attackType.toLowerCase().includes('script')) {
+                recommendations.push(`${recommendations.length + 1}. Implement Content Security Policy and input sanitization (${count} XSS attempts)`);
+            } else if (attackType.toLowerCase().includes('brute') || attackType.toLowerCase().includes('force')) {
+                recommendations.push(`${recommendations.length + 1}. Enable account lockout and strong password policies (${count} brute force attempts)`);
+            } else if (attackType.toLowerCase().includes('scan') || attackType.toLowerCase().includes('probe')) {
+                recommendations.push(`${recommendations.length + 1}. Configure intrusion detection for port scanning (${count} scanning attempts)`);
+            }
+        });
+        
+        // Recommendations based on protocols
+        const topProtocols = Object.entries(protocolCount)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 3);
+        
+        topProtocols.forEach(([protocol, count]) => {
+            if (protocol.toLowerCase() === 'http' && count > 10) {
+                recommendations.push(`${recommendations.length + 1}. Consider implementing HTTPS and web application firewall (${count} HTTP-based attacks)`);
+            } else if (protocol.toLowerCase() === 'ssh' && count > 5) {
+                recommendations.push(`${recommendations.length + 1}. Secure SSH with key-based authentication and fail2ban (${count} SSH attacks)`);
+            } else if (protocol.toLowerCase() === 'ftp' && count > 3) {
+                recommendations.push(`${recommendations.length + 1}. Replace FTP with secure alternatives like SFTP or FTPS (${count} FTP attacks)`);
+            }
+        });
+        
+        // Recommendations based on severity
+        if (severityCount.high > 0) {
+            recommendations.push(`${recommendations.length + 1}. URGENT: Address ${severityCount.high} high-severity threats immediately`);
+        }
+        if (severityCount.medium > severityCount.high) {
+            recommendations.push(`${recommendations.length + 1}. Prioritize ${severityCount.medium} medium-severity alerts for investigation`);
+        }
+        
+        // Recommendations based on target analysis
+        const topTargets = Object.entries(destIpCount)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 2);
+        
+        if (topTargets.length > 0 && topTargets[0][1] > 10) {
+            recommendations.push(`${recommendations.length + 1}. Strengthen security for frequently targeted system ${topTargets[0][0]} (${topTargets[0][1]} attacks)`);
+        }
+    }
+    
+    // Add general recommendations if no specific data
+    if (recommendations.length === 0) {
+        recommendations.push(
+            '1. No immediate threats detected - maintain current security posture',
+            '2. Continue regular security monitoring and log analysis',
+            '3. Keep security systems and signatures up to date',
+            '4. Conduct periodic security assessments'
+        );
+    }
+    
+    // Add general best practices
+    const generalRecommendations = [
+        `${recommendations.length + 1}. Implement network segmentation to limit attack spread`,
+        `${recommendations.length + 2}. Enable comprehensive logging and SIEM integration`,
+        `${recommendations.length + 3}. Conduct regular security awareness training for staff`,
+        `${recommendations.length + 4}. Establish incident response procedures and contact lists`,
+        `${recommendations.length + 5}. Schedule regular penetration testing and vulnerability assessments`
+    ];
+    
+    // Limit total recommendations to avoid overcrowding
+    const finalRecommendations = [...recommendations, ...generalRecommendations].slice(0, 8);
+    
+    finalRecommendations.forEach(rec => {
+        if (yPos > 270) {
+            doc.addPage();
+            yPos = 20;
+        }
+        
+        // Color code critical recommendations
+        if (rec.includes('CRITICAL') || rec.includes('URGENT')) {
+            doc.setTextColor(200, 0, 0); // Red for critical
+            doc.setFont(undefined, 'bold');
+        } else {
+            doc.setTextColor(0, 0, 0); // Black for normal
+            doc.setFont(undefined, 'normal');
+        }
+        
+        doc.text(rec, margin, yPos);
+        yPos += 8;
+    });
+    
+    // Footer
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`NIDS Report - Page ${i} of ${pageCount} | Generated: ${new Date().toLocaleString()}`, margin, 285);
+    }
+    
+    doc.save(`NIDS_Executive_Summary_${new Date().toISOString().split('T')[0]}.pdf`);
+}
+// ... existing code ...
+    function exportDetailedReport() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const results = JSON.parse(sessionStorage.getItem('analysisResults'));
+        const filename = sessionStorage.getItem('analysisFilename');
+        
+        // Capture dashboard as image
+        html2canvas(document.getElementById('analysisResults')).then(canvas => {
+            const imgData = canvas.toDataURL('image/png');
+            
+            // Add header
+            doc.setFontSize(16);
+            doc.text('NIDS Detailed Analysis Report', 20, 20);
+            
+            // Add dashboard image
+            doc.addImage(imgData, 'PNG', 10, 30, 190, 100);
+            
+            // Add detailed alerts table
+            if (results.alerts && results.alerts.length > 0) {
+                doc.addPage();
+                doc.setFontSize(14);
+                doc.text('Detailed Security Alerts', 20, 20);
+                
+                let yPos = 40;
+                results.alerts.forEach((alert, index) => {
+                    if (yPos > 270) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                    
+                    doc.setFontSize(10);
+                    doc.text(`${index + 1}. ${alert.rule_name} (${alert.severity})`, 20, yPos);
+                    doc.text(`   Source: ${alert.src_ip} → Destination: ${alert.dst_ip}`, 20, yPos + 8);
+                    doc.text(`   Protocol: ${alert.protocol}`, 20, yPos + 16);
+                    doc.text(`   Description: ${alert.description}`, 20, yPos + 24);
+                    yPos += 35;
+                });
+            }
+            
+            doc.save(`NIDS_Detailed_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+        });
+    }
+    </script>
+    <!-- Komentar HTML di dalam JavaScript -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+    // Tambahkan setelah fungsi displayResults (sekitar baris 260)
+    let currentAlertsData = [];
+    let currentPage = 1;
+    let alertsPerPage = 20;
+    
+    function updateAlertsDisplay() {
+        alertsPerPage = parseInt(document.getElementById('alertsPerPage').value);
+        currentPage = 1;
+        renderAlertsTable();
+        renderPagination();
+    }
+    
+    function renderAlertsTable() {
+        const startIndex = (currentPage - 1) * alertsPerPage;
+        const endIndex = startIndex + alertsPerPage;
+        const pageAlerts = currentAlertsData.slice(startIndex, endIndex);
+        
+        const tbody = document.getElementById('alertsTableBody');
+        tbody.innerHTML = '';
+        
+        pageAlerts.forEach(alert => {
+            const severityClass = alert.severity === 'high' ? 'danger' : alert.severity === 'medium' ? 'warning' : 'info';
+            const row = `
+                <tr>
+                    <td><span class="badge bg-${severityClass}">${alert.rule_name}</span></td>
+                    <td>${alert.severity}</td>
+                    <td>${alert.src_ip}</td>
+                    <td>${alert.dst_ip}</td>
+                    <td>${alert.protocol}</td>
+                    <td>${alert.description}</td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+    }
+    
+    function renderPagination() {
+        const totalPages = Math.ceil(currentAlertsData.length / alertsPerPage);
+        const pagination = document.getElementById('alertsPagination');
+        
+        if (totalPages <= 1) {
+            pagination.innerHTML = '';
+            return;
+        }
+        
+        let paginationHTML = '';
+        
+        // Previous button
+        paginationHTML += `
+            <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="changePage(${currentPage - 1})">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+            </li>
+        `;
+        
+        // Page numbers
+        const startPage = Math.max(1, currentPage - 2);
+        const endPage = Math.min(totalPages, currentPage + 2);
+        
+        if (startPage > 1) {
+            paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(1)">1</a></li>`;
+            if (startPage > 2) {
+                paginationHTML += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            paginationHTML += `
+                <li class="page-item ${i === currentPage ? 'active' : ''}">
+                    <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+                </li>
+            `;
+        }
+        
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                paginationHTML += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+            paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(${totalPages})">${totalPages}</a></li>`;
+        }
+        
+        // Next button
+        paginationHTML += `
+            <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="changePage(${currentPage + 1})">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </li>
+        `;
+        
+        pagination.innerHTML = paginationHTML;
+    }
+    
+    function changePage(page) {
+        const totalPages = Math.ceil(currentAlertsData.length / alertsPerPage);
+        if (page >= 1 && page <= totalPages) {
+            currentPage = page;
+            renderAlertsTable();
+            renderPagination();
+        }
+    }
+    </script>
+</body>
+</html>
+<script>
+// Tambahkan fungsi toggle
+function toggleSection(sectionId) {
+    const section = document.getElementById(sectionId);
+    const button = section.querySelector('button[onclick*="toggleSection"]');
+    const icon = button.querySelector('i');
+    
+    if (section.style.display === 'none') {
+        section.style.display = 'block';
+        icon.className = 'fas fa-eye-slash';
+        button.innerHTML = '<i class="fas fa-eye-slash"></i> Hide';
+    } else {
+        section.style.display = 'none';
+        // Create a small indicator that section is hidden
+        const indicator = document.createElement('div');
+        indicator.className = 'alert alert-info text-center';
+        indicator.innerHTML = `
+            <i class="fas fa-eye"></i> 
+            ${sectionId === 'timelineSection' ? 'Timeline' : 'Recent Attacks'} section is hidden. 
+            <button class="btn btn-sm btn-link p-0" onclick="showSection('${sectionId}')">
+                Click to show
+            </button>
+        `;
+        indicator.id = sectionId + '_indicator';
+        section.parentNode.insertBefore(indicator, section.nextSibling);
+    }
+}
+
+function showSection(sectionId) {
+    const section = document.getElementById(sectionId);
+    const indicator = document.getElementById(sectionId + '_indicator');
+    
+    section.style.display = 'block';
+    if (indicator) {
+        indicator.remove();
+    }
+    
+    const button = section.querySelector('button[onclick*="toggleSection"]');
+    const icon = button.querySelector('i');
+    icon.className = 'fas fa-eye-slash';
+    button.innerHTML = '<i class="fas fa-eye-slash"></i> Hide';
+}
+
+// Auto-hide timeline and recent attacks when analysis results are loaded
+function hideTimelineOnAnalysis() {
+    const results = sessionStorage.getItem('analysisResults');
+    if (results) {
+        // Auto-hide sections when PCAP analysis is loaded
+        setTimeout(() => {
+            // Hide timeline section (contains both timeline and recent attacks)
+            const timelineSection = document.getElementById('timelineSection');
+            if (timelineSection) {
+                timelineSection.style.display = 'none';
+            }
+            
+            // Hide blocked attacks card (3rd card)
+            const blockedAttacksCard = document.querySelector('.row .col-md-3:nth-child(3)');
+            if (blockedAttacksCard) {
+                blockedAttacksCard.style.display = 'none';
+            }
+            
+            // Hide network status card (4th card)
+            const networkStatusCard = document.querySelector('.row .col-md-3:nth-child(4)');
+            if (networkStatusCard) {
+                networkStatusCard.style.display = 'none';
+            }
+        }, 500);
+    }
+}
+
+// Function to show all sections (for live monitoring)
+function showAllSections() {
+    const timelineSection = document.getElementById('timelineSection');
+    const blockedAttacksCard = document.querySelector('.row .col-md-3:nth-child(3)');
+    const networkStatusCard = document.querySelector('.row .col-md-3:nth-child(4)');
+    
+    if (timelineSection) {
+        timelineSection.style.display = 'block';
+    }
+    if (blockedAttacksCard) {
+        blockedAttacksCard.style.display = 'block';
+    }
+    if (networkStatusCard) {
+        networkStatusCard.style.display = 'block';
+    }
+}
+
+// Function to reset dashboard for live monitoring
+function resetDashboardForLiveMonitoring() {
+    // Clear session storage
+    sessionStorage.removeItem('analysisResults');
+    sessionStorage.removeItem('analysisFilename');
+    
+    // Show all sections
+    showAllSections();
+    
+    // Reset summary cards
+    document.getElementById('totalAttacks').textContent = '0';
+    document.getElementById('activeThreats').textContent = '0';
+    document.getElementById('blockedAttacks').textContent = '0';
+    document.getElementById('networkStatus').textContent = 'Secure';
+    
+    // Reset network status card color
+    const networkStatusCard = document.getElementById('networkStatus').parentElement.parentElement;
+    networkStatusCard.className = 'card bg-info text-white mb-4';
+    
+    // Clear results content
+    document.getElementById('resultsContent').innerHTML = '';
+}
+
+// Call this function when switching to live monitoring mode
+// Add this to your navigation or mode switching logic
+function updateDashboard() {
+    // Add your real-time data update logic here
+}
+
+// Update dashboard every 30 seconds
+setInterval(updateDashboard, 30000);
+</script>

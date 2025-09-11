@@ -49,21 +49,37 @@
                         <div class="card border-0 shadow-sm">
                             <div class="card-body p-4">
                                 <h4 class="text-center mb-4">Network Classification Analysis</h4>
-                                <form action="/main/analyst.py" method="POST" enctype="multipart/form-data">
+                                <form action="/main/analyst" method="POST" enctype="multipart/form-data" id="pcapForm">
                                     <div class="mb-4 text-center">
                                         <div class="upload-area p-4 border rounded-3 mb-3">
                                             <i class="bi bi-cloud-upload display-4 text-primary"></i>
                                             <p class="mt-2">Drag and drop your PCAP file here or click to browse</p>
                                             <input type="file" class="form-control" id="pcapFile" name="pcapFile" accept=".pcap,.pcapng" required>
                                         </div>
-                                        <small class="text-muted">Supported formats: .pcap, .pcapng</small>
+                                        <small class="text-muted">Supported formats: .pcap, .pcapng (Max: 100MB)</small>
                                     </div>
                                     <div class="text-center">
-                                        <button type="submit" class="btn btn-primary px-5">
+                                        <button type="submit" class="btn btn-primary px-5" id="analyzeBtn">
                                             <i class="bi bi-search me-2"></i>Analyze Network Traffic
                                         </button>
+                                        <div class="spinner-border spinner-border-sm ms-2 d-none" id="loadingSpinner" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
                                     </div>
                                 </form>
+                                
+                                <!-- Results Section -->
+                                <div id="resultsSection" class="mt-4 d-none">
+                                    <div class="alert alert-success" role="alert">
+                                        <h5><i class="bi bi-check-circle me-2"></i>Analysis Complete!</h5>
+                                        <p class="mb-0">Your PCAP file has been analyzed successfully.</p>
+                                    </div>
+                                    <div class="text-center">
+                                        <a href="/dashboard" class="btn btn-success">
+                                            <i class="bi bi-graph-up me-2"></i>View Detailed Results
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -125,5 +141,49 @@
             background-color: #0d6efd;
         }
     </style>
+    <script>
+        document.getElementById('pcapForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const resultsSection = document.getElementById('resultsSection');
+            
+            // Show loading state
+            analyzeBtn.disabled = true;
+            loadingSpinner.classList.remove('d-none');
+            resultsSection.classList.add('d-none');
+            
+            fetch('/main/analyst', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Store results in sessionStorage for dashboard
+                    sessionStorage.setItem('analysisResults', JSON.stringify(data.results));
+                    sessionStorage.setItem('analysisReport', data.report);
+                    sessionStorage.setItem('analysisFilename', data.filename);
+                    
+                    // Redirect immediately to dashboard
+                    window.location.href = '/dashboard';
+                } else {
+                    // Show error message
+                    alert('Analysis failed: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred during analysis. Please try again.');
+            })
+            .finally(() => {
+                // Hide loading state
+                analyzeBtn.disabled = false;
+                loadingSpinner.classList.add('d-none');
+            });
+        });
+    </script>
 </body>
 </html>

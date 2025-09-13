@@ -430,4 +430,5 @@ MIT License - see LICENSE file for details.
 
 ---
 
-**Developed with ❤️ for Network Security**
+**Developed by Desta Fauzi H**
+**Version 1.0.0**

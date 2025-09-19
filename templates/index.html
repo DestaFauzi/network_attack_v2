@@ -88,31 +88,173 @@
                     <div class="tab-pane fade" id="live" role="tabpanel">
                         <div class="card border-0 shadow-sm">
                             <div class="card-body p-4">
-                                <div class="row justify-content-center">
-                                    <div class="col-md-8">
-                                        <h4 class="text-center mb-4">Login to Monitor</h4>
-                                        <form action="/main/live-monitor.py" method="POST">
-                                            <div class="form-floating mb-3">
-                                                <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
-                                                <label for="username">SSH Username</label>
-                                                <small class="text-muted">Default: root</small>
-                                                <small class="text-muted">Port: 22</small>
+                                <!-- Login Section (Initially Visible) -->
+                                <div id="loginSection">
+                                    <div class="row justify-content-center">
+                                        <div class="col-md-8">
+                                            <h4 class="text-center mb-4">
+                                                <i class="bi bi-shield-lock me-2"></i>Login to Live Monitor
+                                            </h4>
+                                            
+                                            <!-- Authentication Method Tabs -->
+                                            <ul class="nav nav-tabs mb-3" id="authTabs" role="tablist">
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link active" id="password-auth-tab" data-bs-toggle="tab" data-bs-target="#password-auth" type="button">
+                                                        <i class="bi bi-key me-1"></i>Password
+                                                    </button>
+                                                </li>
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link" id="ssh-key-tab" data-bs-toggle="tab" data-bs-target="#ssh-key-auth" type="button">
+                                                        <i class="bi bi-file-lock me-1"></i>SSH Key
+                                                    </button>
+                                                </li>
+                                            </ul>
+
+                                            <div class="tab-content" id="authTabContent">
+                                                <!-- Password Authentication Tab Content -->
+                                                <div class="tab-pane fade show active" id="password-auth" role="tabpanel">
+                                                    <form id="liveLoginForm">
+                                                        <input type="hidden" name="auth_method" value="password">
+                                                        <div class="form-floating mb-3">
+                                                            <input type="text" class="form-control" id="username" name="username" placeholder="Username" value="admin" required>
+                                                            <label for="username">Username</label>
+                                                        </div>
+                                                        <div class="form-floating mb-3">
+                                                                <input type="text" class="form-control" id="ipAddress" name="ip_address" placeholder="IP Address" value="127.0.0.1" required>
+                                                            <label for="ipAddress">Server IP Address</label>
+                                                        </div>
+                                                        <div class="form-floating mb-4">
+                                                            <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                                                            <label for="password">Password</label>
+                                                        </div>
+                                                        <div class="d-grid">
+                                                            <button type="submit" class="btn btn-primary" id="loginBtn">
+                                                                <i class="bi bi-box-arrow-in-right me-2"></i>Login & Start Monitoring
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                                
+                                                <!-- SSH Key Authentication Tab Content -->
+                                                <div class="tab-pane fade" id="ssh-key-auth" role="tabpanel">
+                                                    <form id="sshKeyLoginForm">
+                                                        <input type="hidden" name="auth_method" value="ssh_key">
+                                                        <div class="form-floating mb-3">
+                                                            <input type="text" class="form-control" id="sshUsername" name="username" placeholder="Username" value="admin" required>
+                                                            <label for="sshUsername">Username</label>
+                                                        </div>
+                                                        <div class="form-floating mb-3">
+                                                            <input type="text" class="form-control" id="sshIpAddress" name="ip_address" placeholder="IP Address" value="127.0.0.1" required>
+                                                            <label for="sshIpAddress">Server IP Address</label>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label for="publicKeyFile" class="form-label">SSH Public Key File</label>
+                                                            <input type="file" class="form-control" id="publicKeyFile" name="public_key_file" accept=".pub,.pem,.key">
+                                                            <div class="form-text">
+                                                                Upload your SSH <strong>public key</strong> file:
+                                                                <br>• OpenSSH format: id_rsa.pub, id_ed25519.pub
+                                                                <br>• Or paste public key content directly below
+                                                            </div>
+                                                        </div>
+                                                        <div class="mb-4">
+                                                            <label for="publicKeyContent" class="form-label">Or Paste Public Key Content</label>
+                                                            <textarea class="form-control" id="publicKeyContent" name="public_key_content" rows="3" placeholder="ssh-rsa AAAAB3NzaC1yc2EAAAA... or ssh-ed25519 AAAAC3NzaC1lZDI1NTE5..."></textarea>
+                                                            <div class="form-text">Paste your public key content here as alternative to file upload</div>
+                                                        </div>
+                                                        <div class="d-grid gap-2">
+                                                            <button type="submit" class="btn btn-primary" id="sshLoginBtn">
+                                                                <i class="bi bi-file-lock me-2"></i>Login with SSH Key
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </div>
                                             </div>
-                                            <div class="form-floating mb-3">
-                                                <input type="text" class="form-control" id="ip" name="ip" placeholder="IP Address" required>
-                                                <label for="ip">SSH IP Address</label>
-                                                <small class="text-muted">Default: 127.0.0.1</small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Live Monitoring Dashboard (Initially Hidden) -->
+                                <div id="monitoringSection" class="d-none">
+                                    <div class="d-flex justify-content-between align-items-center mb-4">
+                                        <h4><i class="bi bi-activity me-2"></i>Live Network Monitoring</h4>
+                                        <div>
+                                            <button class="btn btn-success btn-sm me-2" id="startMonitoringBtn">
+                                                <i class="bi bi-play-fill"></i> Start
+                                            </button>
+                                            <button class="btn btn-danger btn-sm me-2" id="stopMonitoringBtn">
+                                                <i class="bi bi-stop-fill"></i> Stop
+                                            </button>
+                                            <button class="btn btn-secondary btn-sm" id="logoutBtn">
+                                                <i class="bi bi-box-arrow-right"></i> Logout
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Status Cards -->
+                                    <div class="row mb-4">
+                                        <div class="col-md-3">
+                                            <div class="card bg-primary text-white">
+                                                <div class="card-body text-center">
+                                                    <h5 id="totalPackets">0</h5>
+                                                    <small>Total Packets</small>
+                                                </div>
                                             </div>
-                                            <div class="form-floating mb-4">
-                                                <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
-                                                <label for="password">Password</label>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="card bg-success text-white">
+                                                <div class="card-body text-center">
+                                                    <h5 id="tcpPackets">0</h5>
+                                                    <small>TCP Packets</small>
+                                                </div>
                                             </div>
-                                            <div class="d-grid">
-                                                <button type="submit" class="btn btn-primary">
-                                                    <i class="bi bi-box-arrow-in-right me-2"></i>Login to Monitor
-                                                </button>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="card bg-info text-white">
+                                                <div class="card-body text-center">
+                                                    <h5 id="udpPackets">0</h5>
+                                                    <small>UDP Packets</small>
+                                                </div>
                                             </div>
-                                        </form>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="card bg-warning text-white">
+                                                <div class="card-body text-center">
+                                                    <h5 id="alertsCount">0</h5>
+                                                    <small>Alerts</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Real-time Alerts -->
+                                    <div class="card mb-4">
+                                        <div class="card-header">
+                                            <h6><i class="bi bi-exclamation-triangle me-2"></i>Real-time Alerts</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="alertsList" style="max-height: 300px; overflow-y: auto;">
+                                                <p class="text-muted text-center">No alerts detected</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Monitoring Status -->
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6><i class="bi bi-info-circle me-2"></i>Monitoring Status</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <p><strong>Status:</strong> <span id="monitoringStatus" class="badge bg-secondary">Stopped</span></p>
+                                                    <p><strong>Interface:</strong> <span id="currentInterface">-</span></p>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <p><strong>Start Time:</strong> <span id="startTime">-</span></p>
+                                                    <p><strong>Duration:</strong> <span id="duration">-</span></p>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -142,6 +284,7 @@
         }
     </style>
     <script>
+        // Existing PCAP form script...
         document.getElementById('pcapForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -184,6 +327,504 @@
                 loadingSpinner.classList.add('d-none');
             });
         });
+
+        // Live Monitoring Login and Control
+        let monitoringInterval;
+        let startTime;
+
+        // Password Login Form Handler
+        document.getElementById('liveLoginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const server_ip = document.getElementById('ipAddress').value;
+            const loginBtn = document.getElementById('loginBtn');
+            
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Logging in...';
+            
+            // Prepare login data as JSON
+            const loginData = {
+                username: username,
+                password: password,
+                auth_method: 'password'
+            };
+            
+            // Only add server_ip if it's not localhost/127.0.0.1
+            if (server_ip && server_ip !== '127.0.0.1' && server_ip !== 'localhost') {
+                loginData.server_ip = server_ip;
+            }
+            
+            fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(loginData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    showAlert('Login successful! Redirecting...', 'success');
+                    // Redirect to live dashboard
+                    setTimeout(() => {
+                        window.location.href = data.redirect;
+                    }, 1000);
+                } else {
+                    showAlert('Login failed: ' + (data.message || data.error || 'Invalid credentials'), 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('Login error. Please try again.', 'danger');
+            })
+            .finally(() => {
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right me-2"></i>Login & Start Monitoring';
+            });
+        });
+
+        // SSH Key Login Form Handler
+        document.getElementById('sshKeyLoginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('sshUsername').value;
+            const server_ip = document.getElementById('sshIpAddress').value;
+            const publicKeyFile = document.getElementById('publicKeyFile').files[0];
+            const publicKeyContent = document.getElementById('publicKeyContent').value;
+            const sshLoginBtn = document.getElementById('sshLoginBtn');
+            
+            sshLoginBtn.disabled = true;
+            sshLoginBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Authenticating...';
+            
+            // Get public key content
+            let keyContent = publicKeyContent;
+            
+            if (publicKeyFile && !keyContent) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    keyContent = e.target.result;
+                    performSSHLogin();
+                };
+                reader.readAsText(publicKeyFile);
+            } else {
+                performSSHLogin();
+            }
+            
+            function performSSHLogin() {
+                if (!keyContent) {
+                    showAlert('Please provide SSH public key content or upload a key file', 'danger');
+                    sshLoginBtn.disabled = false;
+                    sshLoginBtn.innerHTML = '<i class="bi bi-file-lock me-2"></i>Login with SSH Key';
+                    return;
+                }
+                
+                const loginData = {
+                    username: username,
+                    private_key: keyContent, // Note: This should be private key for SSH auth
+                    auth_method: 'ssh_key'
+                };
+                
+                // Only add server_ip if it's not localhost/127.0.0.1
+                if (server_ip && server_ip !== '127.0.0.1' && server_ip !== 'localhost') {
+                    loginData.server_ip = server_ip;
+                }
+                
+                fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(loginData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showAlert('SSH authentication successful! Redirecting...', 'success');
+                        setTimeout(() => {
+                            window.location.href = data.redirect;
+                        }, 1000);
+                    } else {
+                        showAlert('SSH authentication failed: ' + (data.message || data.error || 'Invalid key'), 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showAlert('SSH authentication error. Please try again.', 'danger');
+                })
+                .finally(() => {
+                    sshLoginBtn.disabled = false;
+                    sshLoginBtn.innerHTML = '<i class="bi bi-file-lock me-2"></i>Login with SSH Key';
+                });
+            }
+        });
+
+        // Function to show alerts
+        function showAlert(message, type) {
+            // Create alert container if it doesn't exist
+            let alertContainer = document.getElementById('alertContainer');
+            if (!alertContainer) {
+                alertContainer = document.createElement('div');
+                alertContainer.id = 'alertContainer';
+                alertContainer.className = 'mt-3';
+                document.getElementById('loginSection').appendChild(alertContainer);
+            }
+            
+            alertContainer.innerHTML = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+        }
+        document.getElementById('startMonitoringBtn').addEventListener('click', function() {
+            const interface = document.getElementById('currentInterface').textContent;
+            
+            // Disable button saat proses
+            const startBtn = document.getElementById('startMonitoringBtn');
+            startBtn.disabled = true;
+            startBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Starting...';
+            
+            fetch('/api/monitoring/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ interface: interface })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'started' || data.status === 'already_running') {
+                    document.getElementById('monitoringStatus').textContent = 'Running';
+                    document.getElementById('monitoringStatus').className = 'badge bg-success';
+                    startTime = new Date();
+                    document.getElementById('startTime').textContent = startTime.toLocaleTimeString();
+                    
+                    // Start real-time updates
+                    monitoringInterval = setInterval(updateMonitoringData, 2000);
+                    
+                    // Show success message
+                    showAlert(data.message || 'Monitoring started successfully', 'success');
+                } else {
+                    // Show error message
+                    showAlert(data.message || 'Failed to start monitoring', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('Network error: Unable to start monitoring', 'danger');
+            })
+            .finally(() => {
+                // Re-enable button
+                startBtn.disabled = false;
+                startBtn.innerHTML = '<i class="bi bi-play-fill"></i> Start';
+            });
+        });
+
+        document.getElementById('stopMonitoringBtn').addEventListener('click', function() {
+            const stopBtn = document.getElementById('stopMonitoringBtn');
+            stopBtn.disabled = true;
+            stopBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Stopping...';
+            
+            fetch('/api/monitoring/stop', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'stopped') {
+                    document.getElementById('monitoringStatus').textContent = 'Stopped';
+                    document.getElementById('monitoringStatus').className = 'badge bg-secondary';
+                    clearInterval(monitoringInterval);
+                    showAlert(data.message || 'Monitoring stopped', 'info');
+                } else {
+                    showAlert(data.message || 'Failed to stop monitoring', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('Network error: Unable to stop monitoring', 'danger');
+            })
+            .finally(() => {
+                stopBtn.disabled = false;
+                stopBtn.innerHTML = '<i class="bi bi-stop-fill"></i> Stop';
+            });
+        });
+
+        // Function to show alerts
+        function showAlert(message, type) {
+            // Remove existing alerts
+            const existingAlerts = document.querySelectorAll('.alert');
+            existingAlerts.forEach(alert => alert.remove());
+            
+            // Create new alert
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            // Insert alert at the top of monitoring section
+            const monitoringSection = document.getElementById('monitoringSection');
+            monitoringSection.insertBefore(alertDiv, monitoringSection.firstChild);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+        document.getElementById('startMonitoringBtn').addEventListener('click', function() {
+            const interface = document.getElementById('currentInterface').textContent;
+            
+            // Disable button saat proses
+            const startBtn = document.getElementById('startMonitoringBtn');
+            startBtn.disabled = true;
+            startBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Starting...';
+            
+            fetch('/api/monitoring/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ interface: interface })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'started' || data.status === 'already_running') {
+                    document.getElementById('monitoringStatus').textContent = 'Running';
+                    document.getElementById('monitoringStatus').className = 'badge bg-success';
+                    startTime = new Date();
+                    document.getElementById('startTime').textContent = startTime.toLocaleTimeString();
+                    
+                    // Start real-time updates
+                    monitoringInterval = setInterval(updateMonitoringData, 2000);
+                    
+                    // Show success message
+                    showAlert(data.message || 'Monitoring started successfully', 'success');
+                } else {
+                    // Show error message
+                    showAlert(data.message || 'Failed to start monitoring', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('Network error: Unable to start monitoring', 'danger');
+            })
+            .finally(() => {
+                // Re-enable button
+                startBtn.disabled = false;
+                startBtn.innerHTML = '<i class="bi bi-play-fill"></i> Start';
+            });
+        });
+
+        document.getElementById('stopMonitoringBtn').addEventListener('click', function() {
+            const stopBtn = document.getElementById('stopMonitoringBtn');
+            stopBtn.disabled = true;
+            stopBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Stopping...';
+            
+            fetch('/api/monitoring/stop', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'stopped') {
+                    document.getElementById('monitoringStatus').textContent = 'Stopped';
+                    document.getElementById('monitoringStatus').className = 'badge bg-secondary';
+                    clearInterval(monitoringInterval);
+                    showAlert(data.message || 'Monitoring stopped', 'info');
+                } else {
+                    showAlert(data.message || 'Failed to stop monitoring', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('Network error: Unable to stop monitoring', 'danger');
+            })
+            .finally(() => {
+                stopBtn.disabled = false;
+                stopBtn.innerHTML = '<i class="bi bi-stop-fill"></i> Stop';
+            });
+        });
+
+        // Function to show alerts
+        function showAlert(message, type) {
+            // Remove existing alerts
+            const existingAlerts = document.querySelectorAll('.alert');
+            existingAlerts.forEach(alert => alert.remove());
+            
+            // Create new alert
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            // Insert alert at the top of monitoring section
+            const monitoringSection = document.getElementById('monitoringSection');
+            monitoringSection.insertBefore(alertDiv, monitoringSection.firstChild);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+        document.getElementById('startMonitoringBtn').addEventListener('click', function() {
+            const interface = document.getElementById('currentInterface').textContent;
+            
+            // Disable button saat proses
+            const startBtn = document.getElementById('startMonitoringBtn');
+            startBtn.disabled = true;
+            startBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Starting...';
+            
+            fetch('/api/monitoring/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ interface: interface })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'started' || data.status === 'already_running') {
+                    document.getElementById('monitoringStatus').textContent = 'Running';
+                    document.getElementById('monitoringStatus').className = 'badge bg-success';
+                    startTime = new Date();
+                    document.getElementById('startTime').textContent = startTime.toLocaleTimeString();
+                    
+                    // Start real-time updates
+                    monitoringInterval = setInterval(updateMonitoringData, 2000);
+                    
+                    // Show success message
+                    showAlert(data.message || 'Monitoring started successfully', 'success');
+                } else {
+                    // Show error message
+                    showAlert(data.message || 'Failed to start monitoring', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('Network error: Unable to start monitoring', 'danger');
+            })
+            .finally(() => {
+                // Re-enable button
+                startBtn.disabled = false;
+                startBtn.innerHTML = '<i class="bi bi-play-fill"></i> Start';
+            });
+        });
+
+        document.getElementById('stopMonitoringBtn').addEventListener('click', function() {
+            const stopBtn = document.getElementById('stopMonitoringBtn');
+            stopBtn.disabled = true;
+            stopBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Stopping...';
+            
+            fetch('/api/monitoring/stop', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'stopped') {
+                    document.getElementById('monitoringStatus').textContent = 'Stopped';
+                    document.getElementById('monitoringStatus').className = 'badge bg-secondary';
+                    clearInterval(monitoringInterval);
+                    showAlert(data.message || 'Monitoring stopped', 'info');
+                } else {
+                    showAlert(data.message || 'Failed to stop monitoring', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('Network error: Unable to stop monitoring', 'danger');
+            })
+            .finally(() => {
+                stopBtn.disabled = false;
+                stopBtn.innerHTML = '<i class="bi bi-stop-fill"></i> Stop';
+            });
+        });
+
+        // Function to show alerts
+        function showAlert(message, type) {
+            // Remove existing alerts
+            const existingAlerts = document.querySelectorAll('.alert');
+            existingAlerts.forEach(alert => alert.remove());
+            
+            // Create new alert
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            // Insert alert at the top of monitoring section
+            const monitoringSection = document.getElementById('monitoringSection');
+            monitoringSection.insertBefore(alertDiv, monitoringSection.firstChild);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            fetch('/logout', {
+                method: 'POST'
+            })
+            .then(() => {
+                // Show login section, hide monitoring section
+                document.getElementById('loginSection').classList.remove('d-none');
+                document.getElementById('monitoringSection').classList.add('d-none');
+                
+                // Reset form
+                document.getElementById('liveLoginForm').reset();
+                clearInterval(monitoringInterval);
+            })
+            .catch(error => console.error('Error:', error));
+        });
+
+        function updateMonitoringData() {
+            // Update statistics
+            fetch('/api/monitoring/statistics')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('totalPackets').textContent = data.total_packets || 0;
+                    document.getElementById('tcpPackets').textContent = data.tcp_packets || 0;
+                    document.getElementById('udpPackets').textContent = data.udp_packets || 0;
+                    document.getElementById('alertsCount').textContent = data.alerts_count || 0;
+                })
+                .catch(error => console.error('Error:', error));
+
+            // Update alerts
+            fetch('/api/monitoring/alerts')
+                .then(response => response.json())
+                .then(data => {
+                    const alertsList = document.getElementById('alertsList');
+                    if (data.alerts && data.alerts.length > 0) {
+                        alertsList.innerHTML = data.alerts.map(alert => 
+                            `<div class="alert alert-warning alert-sm mb-2">
+                                <small><strong>${alert.timestamp}:</strong> ${alert.message}</small>
+                            </div>`
+                        ).join('');
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+
+            // Update duration
+            if (startTime) {
+                const now = new Date();
+                const duration = Math.floor((now - startTime) / 1000);
+                const minutes = Math.floor(duration / 60);
+                const seconds = duration % 60;
+                document.getElementById('duration').textContent = `${minutes}m ${seconds}s`;
+            }
+        }
     </script>
 </body>
 </html>

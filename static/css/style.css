@@ -2,7 +2,42 @@
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
-
+.log-entry {
+            transition: background-color 0.3s ease;
+        }
+        
+        .log-entry:hover {
+            background-color: rgba(0, 123, 255, 0.1);
+        }
+        
+        .table-responsive {
+            border-radius: 8px;
+        }
+        
+        .sticky-top {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .font-monospace {
+            font-family: 'Courier New', monospace;
+        }
+        
+        .badge {
+            font-size: 0.75em;
+            min-width: 45px;
+        }
+        
+        #logsContainer {
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+        
+        .log-entry td {
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
 .upload-area {
     cursor: pointer;
     transition: all 0.3s ease;

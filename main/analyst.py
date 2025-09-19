@@ -32,7 +32,7 @@ def pcap_to_dataframe(pcap_file):
                     'src_port': 0,
                     'dst_port': 0,
                     'packet_length': len(packet),
-                    'flags': 0
+                    'flags': 0  
                 }
                 
                 # Extract IP layer information

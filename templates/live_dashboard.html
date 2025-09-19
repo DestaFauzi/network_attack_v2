@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NIDS Live Monitoring Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --dark-bg: #1a1a1a;
+            --card-bg: #ffffff;
+            --border-color: #e9ecef;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            color: var(--primary-color) !important;
+        }
+
+        .main-container {
+            padding: 2rem 0;
+        }
+
+        .dashboard-card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: none;
+            margin-bottom: 2rem;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            padding: 1.5rem;
+            font-weight: 600;
+        }
+
+        .status-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-active {
+            background: var(--success-color);
+            box-shadow: 0 0 20px rgba(39, 174, 96, 0.5);
+        }
+
+        .status-inactive {
+            background: var(--danger-color);
+            box-shadow: 0 0 20px rgba(231, 76, 60, 0.5);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transform: rotate(45deg);
+            transition: all 0.5s;
+            opacity: 0;
+        }
+
+        .metric-card:hover::before {
+            animation: shine 0.5s ease-in-out;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); opacity: 0; }
+        }
+
+        .metric-card.packets { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .metric-card.alerts { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .metric-card.rate { background: linear-gradient(135deg, #f39c12, #e67e22); }
+        .metric-card.uptime { background: linear-gradient(135deg, #27ae60, #229954); }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            font-size: 1rem;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .metric-icon {
+            font-size: 3rem;
+            opacity: 0.3;
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .btn-modern {
+            border-radius: 25px;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            border: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-modern::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-modern:hover::before {
+            left: 100%;
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, var(--success-color), #229954);
+            color: white;
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, var(--danger-color), #c0392b);
+            color: white;
+        }
+
+        .alert-item {
+            border-left: 4px solid;
+            margin-bottom: 1rem;
+            border-radius: 0 8px 8px 0;
+            transition: all 0.3s ease;
+        }
+
+        .alert-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .alert-high { border-left-color: var(--danger-color); background: rgba(231, 76, 60, 0.1); }
+        .alert-medium { border-left-color: var(--warning-color); background: rgba(243, 156, 18, 0.1); }
+        .alert-low { border-left-color: var(--success-color); background: rgba(39, 174, 96, 0.1); }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            padding: 1rem;
+        }
+
+        .table-modern {
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .table-modern thead {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+
+        .table-modern tbody tr {
+            transition: all 0.3s ease;
+        }
+
+        .table-modern tbody tr:hover {
+            background: rgba(52, 152, 219, 0.1);
+            transform: scale(1.02);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .control-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .interface-info {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-top: 1rem;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-shield-alt me-2"></i>
+                NIDS Live Monitoring
+            </a>
+            <div class="navbar-nav ms-auto">
+                <button class="btn btn-outline-danger btn-modern" onclick="logout()">
+                    <i class="fas fa-sign-out-alt me-2"></i>Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container main-container" style="margin-top: 80px;">
+        <!-- Control Panel -->
+        <div class="control-panel fade-in">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h4 class="mb-3">
+                        <i class="fas fa-cogs me-2"></i>Monitoring Control
+                    </h4>
+                    <div class="d-flex align-items-center mb-3">
+                        <span class="status-indicator" id="statusIndicator"></span>
+                        <span id="statusText" class="fw-bold">Checking status...</span>
+                    </div>
+                    <div class="interface-info" id="interfaceInfo">
+                        Interface: Loading...
+                    </div>
+                </div>
+                <div class="col-md-6 text-end">
+                    <button id="startBtn" class="btn btn-start btn-modern me-2" onclick="startMonitoring()">
+                        <i class="fas fa-play me-2"></i>Start Monitoring
+                    </button>
+                    <button id="stopBtn" class="btn btn-stop btn-modern" onclick="stopMonitoring()">
+                        <i class="fas fa-stop me-2"></i>Stop Monitoring
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="stats-grid fade-in">
+            <div class="metric-card packets">
+                <i class="fas fa-network-wired metric-icon"></i>
+                <div class="metric-value" id="totalPackets">0</div>
+                <div class="metric-label">Total Packets</div>
+            </div>
+            <div class="metric-card alerts">
+                <i class="fas fa-exclamation-triangle metric-icon"></i>
+                <div class="metric-value" id="totalAlerts">0</div>
+                <div class="metric-label">Total Alerts</div>
+            </div>
+            <div class="metric-card rate">
+                <i class="fas fa-tachometer-alt metric-icon"></i>
+                <div class="metric-value" id="packetRate">0</div>
+                <div class="metric-label">Packets/sec</div>
+            </div>
+            <div class="metric-card uptime">
+                <i class="fas fa-clock metric-icon"></i>
+                <div class="metric-value" id="uptime">00:00:00</div>
+                <div class="metric-label">Uptime</div>
+            </div>
+        </div>
+
+        <!-- Charts and Alerts -->
+        <div class="row">
+            <!-- Protocol Distribution Chart -->
+            <div class="col-lg-6 mb-4">
+                <div class="dashboard-card fade-in">
+                    <div class="card-header">
+                        <i class="fas fa-chart-pie me-2"></i>Protocol Distribution
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="protocolChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Alerts -->
+            <div class="col-lg-6 mb-4">
+                <div class="dashboard-card fade-in">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-bell me-2"></i>Recent Alerts</span>
+                        <button class="btn btn-sm btn-light" onclick="clearAlerts()">
+                            <i class="fas fa-trash me-1"></i>Clear
+                        </button>
+                    </div>
+                    <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                        <div id="alertsContainer">
+                            <div class="text-center p-3 text-muted">
+                                <i class="fas fa-shield-alt fa-2x mb-2"></i>
+                                <div>No alerts yet</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Sources Table -->
+        <div class="row">
+            <div class="col-12">
+                <div class="dashboard-card fade-in">
+                    <div class="card-header">
+                        <i class="fas fa-list me-2"></i>Top Traffic Sources
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-modern">
+                                <thead>
+                                    <tr>
+                                        <th><i class="fas fa-globe me-2"></i>IP Address</th>
+                                        <th><i class="fas fa-hashtag me-2"></i>Packet Count</th>
+                                        <th><i class="fas fa-percentage me-2"></i>Percentage</th>
+                                        <th><i class="fas fa-info-circle me-2"></i>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="topSourcesTable">
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted">
+                                            <i class="fas fa-spinner fa-spin me-2"></i>Loading data...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Real-time Network Logs -->
+        <div class="row">
+            <div class="col-12">
+                <div class="dashboard-card fade-in">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-stream me-2"></i>Real-time Network Logs</span>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-outline-primary" onclick="toggleAutoScroll()" id="autoScrollBtn">
+                                <i class="fas fa-arrows-alt-v me-1"></i>Auto Scroll: ON
+                            </button>
+                            <button class="btn btn-sm btn-light" onclick="clearNetworkLogs()">
+                                <i class="fas fa-trash me-1"></i>Clear
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;" id="logsContainer">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="table-dark sticky-top">
+                                    <tr>
+                                        <th style="width: 140px;"><i class="fas fa-clock me-1"></i>Time</th>
+                                        <th style="width: 80px;"><i class="fas fa-layer-group me-1"></i>Protocol</th>
+                                        <th style="width: 130px;"><i class="fas fa-arrow-right me-1"></i>Source</th>
+                                        <th style="width: 130px;"><i class="fas fa-bullseye me-1"></i>Destination</th>
+                                        <th style="width: 80px;"><i class="fas fa-weight me-1"></i>Size</th>
+                                        <th><i class="fas fa-info me-1"></i>Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="networkLogsTable">
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted p-4">
+                                            <i class="fas fa-network-wired fa-2x mb-2 d-block"></i>
+                                            <div>No network activity yet</div>
+                                            <small>Start monitoring to see real-time logs</small>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let protocolChart;
+        let monitoringInterval;
+        let startTime = null;
+        let autoScroll = true;
+        let logUpdateInterval;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeInterface();
+            initializeChart();
+            updateStatus();
+            updateStatistics();
+            updateAlerts();
+            updateNetworkLogs();
+            startAutoRefresh();
+        });
+
+        function initializeInterface() {
+            // Add loading states
+            document.getElementById('statusText').innerHTML = '<span class="loading-spinner me-2"></span>Checking status...';
+        }
+
+        function initializeChart() {
+            const ctx = document.getElementById('protocolChart').getContext('2d');
+            protocolChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['TCP', 'UDP', 'ICMP', 'Other'],
+                    datasets: [{
+                        data: [0, 0, 0, 0],
+                        backgroundColor: [
+                            '#3498db',
+                            '#e74c3c',
+                            '#f39c12',
+                            '#27ae60'
+                        ],
+                        borderWidth: 0,
+                        hoverOffset: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true
+                            }
+                        }
+                    },
+                    animation: {
+                        animateRotate: true,
+                        duration: 1000
+                    }
+                }
+            });
+        }
+
+        async function startMonitoring() {
+            try {
+                const response = await fetch('/api/monitoring/start', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({})  // Tambahkan body JSON kosong
+                });
+                const result = await response.json();
+                
+                if (result.status === 'started') {
+                    startTime = Date.now();
+                    showAlert('Monitoring started successfully', 'success');
+                    updateStatus();
+                } else {
+                    showAlert('Failed to start monitoring: ' + (result.message || 'Unknown error'), 'danger');
+                }
+            } catch (error) {
+                showAlert('Error starting monitoring: ' + error.message, 'danger');
+            }
+        }
+
+        async function stopMonitoring() {
+            try {
+                const response = await fetch('/api/monitoring/stop', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                const result = await response.json();
+                
+                if (result.status === 'stopped') {
+                    showAlert('Monitoring stopped', 'info');
+                    updateStatus();
+                } else {
+                    showAlert('Failed to stop monitoring', 'danger');
+                }
+            } catch (error) {
+                showAlert('Error stopping monitoring: ' + error.message, 'danger');
+            }
+        }
+
+        async function updateStatus() {
+            try {
+                const response = await fetch('/api/monitoring/status');
+                const status = await response.json();
+                
+                const indicator = document.getElementById('statusIndicator');
+                const text = document.getElementById('statusText');
+                const interfaceInfo = document.getElementById('interfaceInfo');
+                const startBtn = document.getElementById('startBtn');
+                const stopBtn = document.getElementById('stopBtn');
+                
+                if (status.is_monitoring) {
+                    indicator.className = 'status-indicator status-active';
+                    text.textContent = 'Monitoring Active';
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                    if (!startTime) startTime = Date.now();
+                } else {
+                    indicator.className = 'status-indicator status-inactive';
+                    text.textContent = 'Monitoring Inactive';
+                    startBtn.disabled = false;
+                    stopBtn.disabled = true;
+                    startTime = null;
+                }
+                
+                interfaceInfo.textContent = `Interface: ${status.interface}`;
+                document.getElementById('totalPackets').textContent = status.total_packets;
+                document.getElementById('totalAlerts').textContent = status.total_alerts;
+                
+                // Update uptime
+                if (startTime) {
+                    const uptime = Math.floor((Date.now() - startTime) / 1000);
+                    const hours = Math.floor(uptime / 3600);
+                    const minutes = Math.floor((uptime % 3600) / 60);
+                    const seconds = uptime % 60;
+                    document.getElementById('uptime').textContent = 
+                        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                } else {
+                    document.getElementById('uptime').textContent = '00:00:00';
+                }
+                
+            } catch (error) {
+                console.error('Error updating status:', error);
+            }
+        }
+
+        async function updateStatistics() {
+            try {
+                const response = await fetch('/api/monitoring/statistics');
+                const stats = await response.json();
+                
+                // Update protocol chart
+                if (stats.protocols) {
+                    const labels = Object.keys(stats.protocols);
+                    const data = Object.values(stats.protocols);
+                    
+                    protocolChart.data.labels = labels;
+                    protocolChart.data.datasets[0].data = data;
+                    protocolChart.update();
+                }
+                
+                // Update packet rate
+                document.getElementById('packetRate').textContent = 
+                    Math.round(stats.packet_rate || 0);
+                
+                // Update top sources table
+                updateTopSourcesTable(stats.top_sources || {});
+                
+            } catch (error) {
+                console.error('Error updating statistics:', error);
+            }
+        }
+
+        async function updateAlerts() {
+            try {
+                const response = await fetch('/api/monitoring/alerts?limit=10');
+                const data = await response.json();
+                
+                const container = document.getElementById('alertsContainer');
+                
+                if (data.alerts && data.alerts.length > 0) {
+                    container.innerHTML = data.alerts.map(alert => `
+                        <div class="alert-item p-3 border-bottom alert-${alert.severity.toLowerCase()}">
+                            <div class="d-flex justify-content-between">
+                                <strong>${alert.type}</strong>
+                                <small class="text-muted">${new Date(alert.timestamp).toLocaleTimeString()}</small>
+                            </div>
+                            <div class="mt-1">
+                                <small>${alert.description}</small>
+                            </div>
+                            ${alert.src_ip ? `<div class="mt-1"><small class="text-muted">Source: ${alert.src_ip}</small></div>` : ''}
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="text-center p-3 text-muted">No alerts yet</div>';
+                }
+                
+            } catch (error) {
+                console.error('Error updating alerts:', error);
+            }
+        }
+
+        function updateTopSourcesTable(topSources) {
+            const tbody = document.getElementById('topSourcesTable');
+            
+            if (Object.keys(topSources).length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No data available</td></tr>';
+                return;
+            }
+            
+            const total = Object.values(topSources).reduce((a, b) => a + b, 0);
+            
+            tbody.innerHTML = Object.entries(topSources).map(([ip, count]) => {
+                const percentage = ((count / total) * 100).toFixed(1);
+                const status = count > 100 ? 'High Activity' : 'Normal';
+                const statusClass = count > 100 ? 'text-warning' : 'text-success';
+                
+                return `
+                    <tr>
+                        <td>${ip}</td>
+                        <td>${count}</td>
+                        <td>${percentage}%</td>
+                        <td class="${statusClass}">${status}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function startAutoRefresh() {
+            // Update every 2 seconds
+            monitoringInterval = setInterval(() => {
+                updateStatus();
+                updateStatistics();
+                updateAlerts();
+                updateTopSources();
+            }, 2000);
+            
+            // Update logs more frequently (every 1 second)
+            logUpdateInterval = setInterval(() => {
+                updateNetworkLogs();
+            }, 1000);
+        }
+
+        async function updateNetworkLogs() {
+            try {
+                const response = await fetch('/api/monitoring/logs');
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    displayNetworkLogs(result.logs);
+                }
+            } catch (error) {
+                console.error('Error fetching network logs:', error);
+            }
+        }
+
+        function displayNetworkLogs(logs) {
+            const tableBody = document.getElementById('networkLogsTable');
+            
+            if (!logs || logs.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-muted p-4">
+                            <i class="fas fa-network-wired fa-2x mb-2 d-block"></i>
+                            <div>No network activity yet</div>
+                            <small>Start monitoring to see real-time logs</small>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+        
+            // Sort logs by timestamp (newest first)
+            logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            let html = '';
+            logs.forEach(log => {
+                const time = new Date(log.timestamp).toLocaleTimeString();
+                const protocolClass = getProtocolClass(log.protocol);
+                const sourcePort = log.src_port ? `:${log.src_port}` : '';
+                const destPort = log.dst_port ? `:${log.dst_port}` : '';
+                
+                html += `
+                    <tr class="log-entry">
+                        <td class="font-monospace small">${time}</td>
+                        <td><span class="badge ${protocolClass}">${log.protocol}</span></td>
+                        <td class="font-monospace small">${log.src_ip}${sourcePort}</td>
+                        <td class="font-monospace small">${log.dst_ip}${destPort}</td>
+                        <td class="text-end">${formatBytes(log.size)}</td>
+                        <td class="small text-muted">
+                            ${log.protocol} packet from ${log.src_ip} to ${log.dst_ip}
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tableBody.innerHTML = html;
+            
+            // Auto scroll to TOP for newest data (CHANGED: dari bottom ke top)
+            if (autoScroll) {
+                const container = document.getElementById('logsContainer');
+                container.scrollTop = 0; // Scroll ke atas untuk data terbaru
+            }
+        }
+
+        function getProtocolClass(protocol) {
+            switch(protocol) {
+                case 'TCP': return 'bg-primary';
+                case 'UDP': return 'bg-success';
+                case 'ICMP': return 'bg-warning';
+                default: return 'bg-secondary';
+            }
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function toggleAutoScroll() {
+            autoScroll = !autoScroll;
+            const btn = document.getElementById('autoScrollBtn');
+            btn.innerHTML = `<i class="fas fa-arrows-alt-v me-1"></i>Auto Scroll: ${autoScroll ? 'TOP' : 'OFF'}`;
+            btn.className = autoScroll ? 'btn btn-sm btn-outline-primary' : 'btn btn-sm btn-outline-secondary';
+            
+            // Immediately scroll to top if enabled
+            if (autoScroll) {
+                const container = document.getElementById('logsContainer');
+                container.scrollTop = 0;
+            }
+        }
+
+        function clearNetworkLogs() {
+            const tableBody = document.getElementById('networkLogsTable');
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-muted p-4">
+                        <i class="fas fa-broom fa-2x mb-2 d-block"></i>
+                        <div>Logs cleared</div>
+                        <small>New logs will appear here</small>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function clearAlerts() {
+            // This would need a backend endpoint to clear alerts
+            showAlert('Alert clearing not implemented yet', 'info');
+        }
+
+        function showAlert(message, type) {
+            // Create and show bootstrap alert
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(alertDiv);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+
+        async function logout() {
+            try {
+                const response = await fetch('/logout', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    window.location.href = result.redirect;
+                } else {
+                    showAlert('Logout failed', 'error');
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+                showAlert('Logout error occurred', 'error');
+            }
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (monitoringInterval) {
+                clearInterval(monitoringInterval);
+            }
+            if (logUpdateInterval) {
+                clearInterval(logUpdateInterval);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -523,3 +523,126 @@ MIT License - see LICENSE file for details.
 
 **Developed by Desta Fauzi H**
 **Version 1.0.0**
+
+---
+
+## 🟣 Setup & Migration Guide (Windows)
+
+Panduan lengkap untuk memindahkan proyek ke device lain dan men‑setup hingga siap digunakan. Fokus pada Windows 10/11; Linux/Mac serupa dengan perbedaan kecil pada perintah shell.
+
+### Prasyarat
+- Python: rekomendasi `3.12` (kompatibel wheel banyak paket). `3.13` juga bisa dipakai—ketergantungan `netifaces` sudah dihapus dan diganti `psutil`.
+- Npcap: diperlukan untuk packet capture di Windows. Unduh dari `https://npcap.com` dan centang opsi “WinPcap API-compatible mode”.
+- Jalankan terminal sebagai Administrator saat menjalankan server dan saat capture.
+- Opsi Database:
+  - PostgreSQL (disarankan untuk histori dan filter kuat).
+  - Alternatif MySQL (Laragon) jika ingin memakai bawaan Laragon.
+
+### Memindahkan Proyek ke Device Baru
+- Salin folder proyek `nids_network_attack_detector/` ke device baru.
+- Jangan bawa `venv/` atau `.venv/` jika ukurannya besar; buat venv baru di device target.
+- Pastikan file `.env` berisi konfigurasi yang sesuai untuk device baru (lihat bagian Konfigurasi `.env`).
+- Jika memakai database, migrasikan data dengan alat bawaan:
+  - PostgreSQL: `pg_dump -U <user> -d nids_db -f backup.sql` lalu `psql -U <user> -d nids_db -f backup.sql`.
+  - MySQL: `mysqldump -u <user> -p nids_db > backup.sql` lalu `mysql -u <user> -p nids_db < backup.sql`.
+
+### Instalasi Langkah‑demi‑Langkah (Windows)
+1. Masuk ke folder proyek: `cd nids_network_attack_detector`
+2. Buat dan aktifkan virtual environment:
+   - Buat venv (rekomendasi Python 3.12):
+     - `py -3.12 -m venv .venv`
+   - Aktifkan: `.\.venv\Scripts\activate`
+3. Perbarui pip/setuptools/wheel: `pip install -U pip setuptools wheel`
+4. Install dependencies: `pip install -r requirements.txt`
+   - Catatan: `netifaces` telah dihapus; deteksi interface memakai `psutil`.
+5. Install Npcap dan restart jika diminta.
+6. Siapkan database (pilih salah satu):
+   - PostgreSQL (disarankan):
+     - Install PostgreSQL untuk Windows atau pakai Docker.
+     - Buat DB dan user:
+       - `psql -U postgres` lalu:
+         - `CREATE DATABASE nids_db;`
+         - `CREATE USER nids_user WITH PASSWORD 'nids_password';`
+         - `GRANT ALL PRIVILEGES ON DATABASE nids_db TO nids_user;`
+     - Set `DATABASE_URL=postgresql+psycopg2://nids_user:nids_password@localhost:5432/nids_db` di `.env`.
+   - MySQL (Laragon):
+     - Start MySQL dari Laragon (`Start All`).
+     - Buat DB dan user:
+       - `mysql -u root -p` → `CREATE DATABASE nids_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`
+       - `CREATE USER 'nids_user'@'localhost' IDENTIFIED BY 'nids_password';`
+       - `GRANT ALL PRIVILEGES ON nids_db.* TO 'nids_user'@'localhost';`
+       - `FLUSH PRIVILEGES;`
+     - Install driver: `pip install pymysql`
+     - Set `DATABASE_URL=mysql+pymysql://nids_user:nids_password@127.0.0.1:3306/nids_db` di `.env`.
+
+### Konfigurasi `.env`
+Tambahkan file `.env` di root proyek (contoh variabel penting):
+
+```
+FLASK_ENV=development
+SECRET_KEY=change-this-secret
+UPLOAD_FOLDER=uploads
+LOG_LEVEL=INFO
+DATABASE_URL=postgresql+psycopg2://nids_user:nids_password@localhost:5432/nids_db
+```
+
+Jika tidak memakai database, aplikasi tetap jalan untuk live dashboard; historis log akan terbatas pada in‑memory buffer.
+
+### Inisialisasi Database
+- Tabel dibuat otomatis saat aplikasi start via helper `init_db()` di `db.py`.
+- Opsional jalankan manual:
+  - `python -c "from db import init_db; init_db()"`
+
+### Menjalankan Aplikasi
+1. Buka PowerShell sebagai Administrator.
+2. Aktifkan venv: `.\.venv\Scripts\activate`
+3. Jalankan: `python app.py`
+4. Buka `http://127.0.0.1:5000/`.
+
+### Menggunakan Aplikasi
+- Analisis PCAP:
+  - Dari halaman utama, upload file `.pcap`/`.pcapng` → lihat hasil di dashboard.
+- Live Monitoring:
+  - Masuk ke halaman live dashboard (menu “Live Monitoring”).
+  - Start monitoring via tombol atau endpoint `POST /api/monitoring/start` dengan JSON `{"interface": "Ethernet"}`. Jika kosong, sistem auto‑detect interface aktif.
+  - Status: `GET /api/monitoring/status`.
+  - Logs realtime (buffer 50 item): `GET /api/monitoring/logs`.
+  - Alerts live via SSE: `GET /api/monitoring/alerts/stream`.
+  - Histori berbasis DB: `GET /api/history/logs` dan `GET /api/history/alerts`.
+    - Filter `limit`, `src_ip`, `protocol`, `type`, `severity`, `since` tersedia sebagai query params.
+  - Stop monitoring: `POST /api/monitoring/stop`.
+
+### Catatan Teknis Penting
+- Buffer realtime log dibatasi 50 item untuk menjaga performa UI dan menghindari “stuck” pada waktu lama.
+- Penulisan ke database dilakukan secara asinkron di thread terpisah agar jalur live tidak terblokir I/O.
+- SSE untuk alerts aktif; jika ingin SSE untuk logs, dapat ditambahkan endpoint tambahan (`/api/monitoring/logs/stream`).
+- Deteksi interface menggunakan `psutil`; tidak membutuhkan `netifaces`.
+
+### Troubleshooting Cepat
+- Packet capture tidak bergerak (jam UI tidak maju):
+  - Pastikan Npcap terinstal dan server dijalankan sebagai Administrator.
+  - Periksa nama interface: di Windows sering `Ethernet` atau `Wi‑Fi`. Gunakan `POST /api/monitoring/start` dengan `{"interface":"<nama>"}`.
+  - Cek `network_monitor.log` untuk error seperti permission/driver.
+- `pip install` gagal:
+  - Gunakan Python 3.12 untuk kompatibilitas wheel lebih baik.
+  - Pastikan `pip install -U pip setuptools wheel` sebelum install.
+- PostgreSQL tidak terkoneksi:
+  - Periksa `DATABASE_URL` dan bahwa service PostgreSQL berjalan (`services.msc` atau Docker container).
+- MySQL Laragon:
+  - Pastikan `pymysql` terinstal dan kredensial sesuai dengan user/DB yang dibuat.
+
+### Migrasi ke Perangkat Lain (Ringkas)
+- Backup DB (opsional) → restore di device baru.
+- Copy folder proyek → buat venv baru → install requirements.
+- Set `.env` di device baru → jalankan `python app.py` sebagai Administrator.
+- Verifikasi:
+  - `GET /api/monitoring/status` → pastikan `is_monitoring=true` saat capture berjalan.
+  - `GET /api/monitoring/logs` → terlihat maksimal 50 entri terbaru yang bergerak.
+  - SSE alerts muncul di live dashboard saat ada event.
+
+### Keamanan & Privasi
+- Jangan commit `.env` ke repository publik.
+- Gunakan `SECRET_KEY` unik per device.
+- Batasi akses ke endpoint kontrol (`/api/monitoring/start/stop`) dengan autentikasi peran “control”.
+
+Jika Anda menginginkan otomatisasi setup (script PowerShell untuk membuat venv, install paket, dan menyiapkan `.env` sesuai pilihan database), beri tahu saya—saya bisa menambahkan skrip `tools/setup.ps1` untuk mempercepat proses.

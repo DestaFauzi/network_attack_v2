@@ -126,7 +126,7 @@
             <div class="col-md-4">
                 <div class="card">
                     <div class="card-header">
-                        <h5><i class="fas fa-chart-pie"></i> Attack Types Distribution</h5>
+                        <h5><i class="fas fa-chart-pie"></i> Attack Types (Packet Count)</h5>
                     </div>
                     <div class="card-body">
                         <canvas id="ruleChart"></canvas>
@@ -221,18 +221,15 @@
         // Load analysis results from sessionStorage
         // Load results when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            const results = sessionStorage.getItem('analysisResults');
+            const resultsStr = sessionStorage.getItem('analysisResults');
             const filename = sessionStorage.getItem('analysisFilename');
             
-            console.log('DOMContentLoaded - Analysis Results:', results);
+            console.log('DOMContentLoaded - Analysis Results:', resultsStr);
             console.log('DOMContentLoaded - Filename:', filename);
             
-            if (results) {
+            if (resultsStr) {
                 try {
-                    const data = JSON.parse(results);
-                    console.log('Parsed analysis data:', data);
-                    console.log('Alerts data:', data.alerts);
-                    console.log('Summary data:', data.summary);
+                    const data = JSON.parse(resultsStr);
                     displayResults(data);
                 } catch (error) {
                     console.error('Error parsing analysis results:', error);
@@ -241,16 +238,6 @@
                 console.log('No analysis results found in sessionStorage');
             }
         });
-        const filename = sessionStorage.getItem('analysisFilename');
-        
-        if (results) {
-            const data = JSON.parse(results);
-            displayResults(data, filename);
-            
-            // Update dashboard stats
-            document.getElementById('totalAttacks').textContent = data.summary.total_alerts || 0;
-            document.getElementById('activeThreats').textContent = Object.keys(data.summary.attack_types || {}).length;
-        }
         
         function displayResults(data) {
             const resultsContent = document.getElementById('resultsContent');
@@ -445,7 +432,16 @@ function updateTimelineChart(alerts) {
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Attack Types Distribution'
+                            text: 'Attack Type Distribution (Packets Matched by Rule)'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed;
+                                    return `${label}: ${value} packets`;
+                                }
+                            }
                         }
                     }
                 }

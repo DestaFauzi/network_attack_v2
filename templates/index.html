@@ -305,8 +305,8 @@
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    // Store results in sessionStorage for dashboard
-                    sessionStorage.setItem('analysisResults', JSON.stringify(data.results));
+                    // Store results in sessionStorage for dashboard (sinkron dengan app.py yang mengembalikan 'analysis')
+                    sessionStorage.setItem('analysisResults', JSON.stringify(data.analysis));
                     sessionStorage.setItem('analysisReport', data.report);
                     sessionStorage.setItem('analysisFilename', data.filename);
                     

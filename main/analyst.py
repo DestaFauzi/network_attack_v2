@@ -121,8 +121,25 @@ def analyze_pcap(file_path):
             
             for field, condition in conditions.items():
                 if field in df.columns:
+                    # Support list/tuple inclusion
                     if isinstance(condition, (list, tuple)):
                         mask &= df[field].isin(condition)
+                    # Support comparison operators via dict: {'gt': X, 'lt': Y, 'range': (a,b), 'neq': Z}
+                    elif isinstance(condition, dict):
+                        try:
+                            series = df[field]
+                            if 'gt' in condition:
+                                mask &= (series > condition['gt'])
+                            if 'lt' in condition:
+                                mask &= (series < condition['lt'])
+                            if 'range' in condition and isinstance(condition['range'], (list, tuple)) and len(condition['range']) == 2:
+                                low, high = condition['range']
+                                mask &= series.between(low, high, inclusive='both')
+                            if 'neq' in condition:
+                                mask &= (series != condition['neq'])
+                        except Exception:
+                            # Fallback: ignore malformed condition
+                            pass
                     else:
                         mask &= (df[field] == condition)
             

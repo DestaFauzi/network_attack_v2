@@ -77,7 +77,7 @@ def upload_pcap():
             
             if analysis_result:
                 # Generate report
-                report_data = generate_report(analysis_result, filename)
+                report_data = generate_report(analysis_result)
                 
                 return jsonify({
                     'message': 'File uploaded and analyzed successfully',
@@ -176,15 +176,16 @@ def stop_monitoring():
 def monitoring_status():
     try:
         from real_time_alerts import get_monitoring_status
-        
+
         status = get_monitoring_status()
         default_interface = get_default_interface()
-        
+        stats = status.get('stats', {})
+
         return jsonify({
             'is_monitoring': status.get('is_monitoring', False),
             'interface': status.get('interface') or default_interface or "Ethernet",
-            'total_packets': status.get('total_packets', 0),
-            'total_alerts': status.get('alerts_count', 0),
+            'total_packets': stats.get('total_packets', 0),
+            'total_alerts': stats.get('alerts_count', 0),
             'uptime': status.get('uptime', 0),
             'start_time': status.get('start_time')
         })
@@ -208,16 +209,38 @@ def monitoring_status():
 @require_auth('view')
 def monitoring_statistics():
     try:
-        # Return monitoring statistics
+        # Ambil statistik nyata dari monitor
+        from real_time_alerts import monitor
+
+        stats = getattr(monitor, 'stats', {})
+        # Hitung packet rate berdasarkan paket dalam 5 detik terakhir
+        now = datetime.now()
+        recent_packets = list(getattr(monitor, 'recent_packets', []))
+        window_seconds = 5
+        recent_count = 0
+        top_sources = {}
+        for p in recent_packets:
+            try:
+                ts = datetime.fromisoformat(p.get('timestamp'))
+                if (now - ts).total_seconds() <= window_seconds:
+                    recent_count += 1
+            except:
+                continue
+            src = p.get('src_ip')
+            if src:
+                top_sources[src] = top_sources.get(src, 0) + 1
+
+        protocols = {
+            'TCP': stats.get('tcp_packets', 0),
+            'UDP': stats.get('udp_packets', 0),
+            'ICMP': stats.get('icmp_packets', 0),
+            'Other': max(stats.get('total_packets', 0) - stats.get('tcp_packets', 0) - stats.get('udp_packets', 0) - stats.get('icmp_packets', 0), 0)
+        }
+
         return jsonify({
-            'protocols': {
-                'TCP': 0,
-                'UDP': 0,
-                'ICMP': 0,
-                'Other': 0
-            },
-            'packet_rate': 0,
-            'top_sources': {}
+            'protocols': protocols,
+            'packet_rate': int(recent_count / window_seconds) if window_seconds > 0 else 0,
+            'top_sources': top_sources
         })
     except Exception as e:
         return jsonify({
@@ -229,9 +252,12 @@ def monitoring_statistics():
 @require_auth('view')
 def monitoring_alerts():
     try:
-        # Return recent alerts
+        # Return recent alerts dari monitor
+        from real_time_alerts import monitor
+        alerts = monitor.get_alerts() if hasattr(monitor, 'get_alerts') else []
         return jsonify({
-            'alerts': []
+            'status': 'success',
+            'alerts': alerts
         })
     except Exception as e:
         return jsonify({
@@ -244,11 +270,12 @@ def monitoring_alerts():
 def monitoring_logs():
     try:
         from real_time_alerts import monitor
-        
+
         # Get recent network logs/packets
         logs = monitor.get_recent_packets() if hasattr(monitor, 'get_recent_packets') else []
-        
+
         return jsonify({
+            'status': 'success',
             'logs': logs,
             'count': len(logs)
         })

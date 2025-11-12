@@ -36,6 +36,72 @@ rules_list = [
             'protocol': 'TCP',
             'dst_port': 80
         }
+    },
+    {
+        'name': 'DNS_Amplification_Suspect',
+        'severity': 'high',
+        'description': 'Large DNS responses may indicate amplification attack',
+        'conditions': {
+            'protocol': 'UDP',
+            'dst_port': 53,
+            'packet_length': {'gt': 512}
+        }
+    },
+    {
+        'name': 'SSH_Brute_Force_Suspect',
+        'severity': 'medium',
+        'description': 'Repeated SYNs to SSH port may indicate brute-force attempts',
+        'conditions': {
+            'protocol': 'TCP',
+            'dst_port': 22,
+            'flags': 2
+        }
+    },
+    {
+        'name': 'RDP_Scan',
+        'severity': 'medium',
+        'description': 'Possible RDP port scanning detected',
+        'conditions': {
+            'protocol': 'TCP',
+            'dst_port': 3389
+        }
+    },
+    {
+        'name': 'SMB_Scan',
+        'severity': 'medium',
+        'description': 'Possible SMB scanning detected',
+        'conditions': {
+            'protocol': 'TCP',
+            'dst_port': [139, 445]
+        }
+    },
+    {
+        'name': 'BACnet_Broadcast_Suspect',
+        'severity': 'medium',
+        'description': 'BACnet traffic on default port (ICS) detected',
+        'conditions': {
+            'protocol': 'UDP',
+            'dst_port': 47808
+        }
+    },
+    {
+        'name': 'Modbus_TCP_Suspect',
+        'severity': 'medium',
+        'description': 'Modbus/TCP traffic on default port (ICS) detected',
+        'conditions': {
+            'protocol': 'TCP',
+            'dst_port': 502
+        }
+    },
+    {
+        'name': 'NTP_Amplification_Suspect',
+        'severity': 'medium',
+        'description': 'Large NTP responses may indicate amplification patterns',
+        'conditions': {
+            'protocol': 'UDP',
+            'dst_port': 123,
+            'packet_length': {'gt': 100}
+        }
     }
 ]
 

@@ -523,16 +523,47 @@
 
         async function startMonitoring() {
             try {
+                // Ambil interface saat ini dari status yang sudah ditampilkan
+                const interfaceInfo = document.getElementById('interfaceInfo')?.textContent || '';
+                // interfaceInfo dalam format "Interface: <nama>", ambil bagian setelah titik dua
+                let currentInterface = interfaceInfo.includes(':') ? interfaceInfo.split(':').slice(1).join(':').trim() : interfaceInfo.trim();
+
+                // Jika belum ada, coba ambil dari /api/monitoring/status
+                if (!currentInterface) {
+                    try {
+                        const s = await fetch('/api/monitoring/status');
+                        const status = await s.json();
+                        currentInterface = status.interface || currentInterface || 'Ethernet';
+                    } catch (_) {
+                        // Abaikan jika gagal; gunakan fallback
+                        currentInterface = currentInterface || 'Ethernet';
+                    }
+                }
+
                 const response = await fetch('/api/monitoring/start', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({})  // Tambahkan body JSON kosong
+                    body: JSON.stringify({ interface: currentInterface })
                 });
+                
+                // Tangani response non-200 (misal 401/403 untuk izin)
+                if (!response.ok) {
+                    const errText = await response.text();
+                    try {
+                        const errJson = JSON.parse(errText);
+                        showAlert('Gagal mulai monitoring: ' + (errJson.error || errJson.message || 'Insufficient permissions'), 'danger');
+                    } catch {
+                        showAlert('Gagal mulai monitoring: ' + (errText || 'Insufficient permissions'), 'danger');
+                    }
+                    return;
+                }
+
                 const result = await response.json();
                 
-                if (result.status === 'started') {
+                if (result.status === 'started' || result.status === 'already_running') {
                     startTime = Date.now();
-                    showAlert('Monitoring started successfully', 'success');
+                    const ifaceText = result.interface ? ` on ${result.interface}` : '';
+                    showAlert(`Monitoring ${result.status === 'started' ? 'started' : 'already running'}${ifaceText}`, 'success');
                     updateStatus();
                 } else {
                     showAlert('Failed to start monitoring: ' + (result.message || 'Unknown error'), 'danger');

@@ -10,6 +10,8 @@ from config import *
 class RealTimeMonitor:
     def __init__(self):
         self.is_monitoring = False
+        self.interface = None
+        self.start_time = None
         self.packet_counts = defaultdict(int)
         self.connection_tracker = defaultdict(set)
         self.recent_packets = deque(maxlen=1000)
@@ -36,6 +38,8 @@ class RealTimeMonitor:
             return {"status": "already_running", "interface": interface}
             
         self.is_monitoring = True
+        self.interface = interface
+        self.start_time = datetime.now()
         self.logger.info(f"Starting real-time monitoring on interface: {interface}")
         
         try:
@@ -77,16 +81,21 @@ class RealTimeMonitor:
     
     def _capture_packets(self, interface):
         """Capture packets using Scapy"""
-        try:
-            sniff(
-                iface=interface,
-                prn=self._process_packet,
-                stop_filter=lambda x: not self.is_monitoring,
-                store=0
-            )
-        except Exception as e:
-            self.logger.error(f"Packet capture error: {str(e)}")
-            self.is_monitoring = False
+        # Loop dengan retry agar monitoring tidak berhenti jika terjadi error sementara
+        while self.is_monitoring:
+            try:
+                sniff(
+                    iface=interface,
+                    prn=self._process_packet,
+                    stop_filter=lambda x: not self.is_monitoring,
+                    store=0,
+                    filter="ip or tcp or udp or icmp"
+                )
+            except Exception as e:
+                self.logger.error(f"Packet capture error: {str(e)}")
+                # Tunggu sebentar lalu coba lagi selama is_monitoring masih True
+                time.sleep(1)
+                continue
     
     def _process_packet(self, packet):
         """Process individual packets"""
@@ -117,12 +126,17 @@ class RealTimeMonitor:
                     packet_info['src_port'] = packet[TCP].sport
                     packet_info['dst_port'] = packet[TCP].dport
                     self.stats['tcp_packets'] += 1
+                    # Track destination ports per source IP for port-scan detection
+                    if packet_info['src_ip'] and packet_info['dst_port'] is not None:
+                        self.connection_tracker[packet_info['src_ip']].add(packet_info['dst_port'])
                     
                 elif UDP in packet:
                     packet_info['protocol'] = 'UDP'
                     packet_info['src_port'] = packet[UDP].sport
                     packet_info['dst_port'] = packet[UDP].dport
                     self.stats['udp_packets'] += 1
+                    if packet_info['src_ip'] and packet_info['dst_port'] is not None:
+                        self.connection_tracker[packet_info['src_ip']].add(packet_info['dst_port'])
                     
                 elif ICMP in packet:
                     packet_info['protocol'] = 'ICMP'
@@ -197,8 +211,17 @@ class RealTimeMonitor:
     
     def get_status(self):
         """Get current monitoring status"""
+        uptime_seconds = 0
+        start_time_iso = None
+        if self.start_time:
+            start_time_iso = self.start_time.isoformat()
+            if self.is_monitoring:
+                uptime_seconds = int((datetime.now() - self.start_time).total_seconds())
         return {
             'is_monitoring': self.is_monitoring,
+            'interface': self.interface,
+            'start_time': start_time_iso,
+            'uptime': uptime_seconds,
             'stats': self.stats.copy(),
             'recent_alerts': self.alerts[-10:] if self.alerts else [],
             'recent_packets': list(self.recent_packets)[-20:] if self.recent_packets else []
@@ -219,15 +242,23 @@ class RealTimeMonitor:
             # Format for frontend display - keep original field names
             formatted_packets = []
             for packet in packets:
+                # Sanitasi nilai None menjadi 'Unknown' untuk tampilan
+                timestamp = packet.get('timestamp') or datetime.now().isoformat()
+                protocol = packet.get('protocol') or 'Unknown'
+                src_ip = packet.get('src_ip') or 'Unknown'
+                dst_ip = packet.get('dst_ip') or 'Unknown'
+                src_port = packet.get('src_port') if packet.get('src_port') is not None else ''
+                dst_port = packet.get('dst_port') if packet.get('dst_port') is not None else ''
+                size = packet.get('size', 0)
                 formatted_packets.append({
-                    'timestamp': packet.get('timestamp', ''),
-                    'protocol': packet.get('protocol', 'Unknown'),
-                    'src_ip': packet.get('src_ip', 'Unknown'),
-                    'dst_ip': packet.get('dst_ip', 'Unknown'),
-                    'src_port': packet.get('src_port', ''),
-                    'dst_port': packet.get('dst_port', ''),
-                    'size': packet.get('size', 0),
-                    'details': f"{packet.get('protocol', 'Unknown')} packet from {packet.get('src_ip', 'Unknown')} to {packet.get('dst_ip', 'Unknown')}"
+                    'timestamp': timestamp,
+                    'protocol': protocol,
+                    'src_ip': src_ip,
+                    'dst_ip': dst_ip,
+                    'src_port': src_port,
+                    'dst_port': dst_port,
+                    'size': size,
+                    'details': f"{protocol} packet from {src_ip} to {dst_ip}"
                 })
             
             return formatted_packets

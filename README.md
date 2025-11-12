@@ -391,6 +391,97 @@ REALTIME_CONFIG = {
    - Secure storage
    - Data retention policies
 
+## 🧠 Implementasi Rule-Based Detection
+
+Bagian ini menjelaskan bagaimana mesin deteksi berbasis rule di proyek bekerja dari hulu ke hilir: bagaimana data paket dibentuk, bagaimana rule dievaluasi, dan bagaimana hasilnya dipakai di dashboard.
+
+### Struktur Rule (`main/rules.py`)
+
+Semua rule didefinisikan dalam list `rules_list`. Setiap item memiliki:
+
+- `name`: nama rule/jenis serangan
+- `severity`: tingkat keparahan (`high`, `medium`, `low`)
+- `description`: penjelasan singkat
+- `conditions`: syarat yang harus dipenuhi paket agar dianggap match
+
+Contoh:
+
+```python
+rules_list = [
+    {
+        'name': 'TCP_SYN_Flood',
+        'severity': 'high',
+        'description': 'Possible TCP SYN Flood Attack detected',
+        'conditions': {
+            'protocol': 'TCP',
+            'flags': 2  # SYN flag
+        }
+    }
+]
+```
+
+### Format `conditions` yang didukung
+
+Mesin rule mendukung beberapa bentuk kondisi pada field DataFrame (`protocol`, `src_ip`, `dst_ip`, `src_port`, `dst_port`, `packet_length`, `flags`):
+
+- Kesetaraan langsung: `{'protocol': 'TCP'}` atau `{'dst_port': 80}`
+- Keanggotaan list/tuple: `{'dst_port': [80, 443]}`
+- Operator perbandingan via dict:
+  - Lebih besar: `{'packet_length': {'gt': 512}}`
+  - Lebih kecil: `{'packet_length': {'lt': 100}}`
+  - Rentang: `{'packet_length': {'range': (64, 1514)}}`
+  - Tidak sama: `{'protocol': {'neq': 'UDP'}}`
+
+### Alur Analisis (`main/analyst.py`)
+
+1. `pcap_to_dataframe(file_path)` mengubah PCAP menjadi DataFrame dengan kolom: `timestamp`, `protocol`, `src_ip`, `dst_ip`, `src_port`, `dst_port`, `packet_length`, `flags`.
+   - `protocol` diisi `TCP`/`UDP`/`ICMP` bila layer terkait ada, atau `Unknown` bila tidak terdeteksi.
+2. `analyze_pcap(file_path)` menginisialisasi `analysis_results`:
+   - `alerts`: list alert (maks 10 alert pertama per rule untuk performa)
+   - `summary.total_packets`: jumlah baris DataFrame
+   - `summary.protocols`: hasil `df['protocol'].value_counts().to_dict()` (jumlah paket per protokol)
+   - `summary.attack_types`: dictionary kosong yang akan diisi jumlah paket yang match tiap rule
+3. Untuk setiap rule di `rules_list`:
+   - Buat `mask = True` untuk seluruh baris
+   - Terapkan setiap `conditions` sesuai format di atas secara vektor (pandas)
+   - `matches = df[mask]` berisi semua paket yang memenuhi rule
+   - Tambahkan alert untuk `matches.head(10)` dengan field penting dari paket (src/dst IP/port, protocol, timestamp)
+   - Update ringkasan:
+     - `summary.total_alerts += len(matches)`
+     - `summary.attack_types[rule_name] = summary.attack_types.get(rule_name, 0) + len(matches)`
+
+### Sumber Data untuk Dashboard
+
+- Attack Types Distribution: memakai `summary.attack_types` → jumlah paket yang cocok terhadap masing-masing rule.
+- Protocol Distribution: memakai `summary.protocols` → jumlah paket per protokol dari seluruh PCAP.
+- Severity Levels, Top Source/Destination IPs: dihitung dari `alerts` yang ditampilkan (subset dari paket match).
+
+### Catatan Penting
+
+- Batas alert: maksimal 10 alert per rule ditampilkan untuk performa. Angka pada grafik Attack Types bisa lebih besar karena merepresentasikan total paket match, bukan jumlah alert yang ditampilkan.
+- Menambah rule baru: cukup tambahkan entri baru ke `rules_list`. Jika ada paket yang match, label rule akan muncul otomatis di grafik Attack Types.
+- Field yang umum dipakai pada `conditions`: `protocol`, `dst_port`, `src_port`, `packet_length`, `flags`. Anda dapat mengkombinasikan equality, keanggotaan list, dan operator perbandingan.
+
+### Contoh Rule ICS Tambahan
+
+```python
+{
+  'name': 'Modbus_TCP_Suspect',
+  'severity': 'medium',
+  'description': 'Modbus/TCP traffic on default port (ICS) detected',
+  'conditions': {'protocol': 'TCP', 'dst_port': 502}
+}
+```
+
+### Cara Uji Cepat
+
+1. Upload file PCAP dari halaman utama (`templates/index.html`).
+2. Setelah analisis selesai, Anda akan diarahkan ke dashboard.
+3. Verifikasi:
+   - Panel “Attack Types (Packet Count)” menunjukkan label rule yang match.
+   - Panel “Protocol Distribution” menunjukkan jumlah paket per protokol.
+   - Perbedaan antara jumlah alert tabel dan grafik Attack Types sesuai batas 10 alert per rule.
+
 ## 📚 Dependencies Detail
 
 ```txt

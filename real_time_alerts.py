@@ -14,7 +14,8 @@ class RealTimeMonitor:
         self.start_time = None
         self.packet_counts = defaultdict(int)
         self.connection_tracker = defaultdict(set)
-        self.recent_packets = deque(maxlen=1000)
+        # Buffer siklik untuk realtime logs (maks 50 item)
+        self.recent_packets = deque(maxlen=50)
         self.alerts = []
         self.stats = {
             'total_packets': 0,
@@ -31,6 +32,16 @@ class RealTimeMonitor:
             format='%(asctime)s - %(levelname)s - %(message)s'
         )
         self.logger = logging.getLogger(__name__)
+
+        # Queues untuk integrasi DB dan SSE (non-blocking)
+        try:
+            from queue import Queue
+            self.db_queue = Queue(maxsize=5000)
+            self.alert_queue = Queue(maxsize=1000)
+        except Exception:
+            self.db_queue = None
+            self.alert_queue = None
+        self._db_writer_started = False
         
     def start_monitoring(self, interface=INTERFACE):
         """Start real-time packet monitoring"""
@@ -61,6 +72,20 @@ class RealTimeMonitor:
                 daemon=True
             )
             analysis_thread.start()
+
+            # Start DB writer thread jika DB aktif
+            try:
+                from db import init_db, DB_ENABLED
+                init_db()
+                if DB_ENABLED and not self._db_writer_started and self.db_queue:
+                    db_thread = threading.Thread(
+                        target=self._db_writer_loop,
+                        daemon=True
+                    )
+                    db_thread.start()
+                    self._db_writer_started = True
+            except Exception as e:
+                self.logger.warning(f"DB writer not started: {e}")
             
             return {"status": "started", "interface": interface}
             
@@ -144,6 +169,22 @@ class RealTimeMonitor:
             
             # Add to recent packets
             self.recent_packets.append(packet_info)
+            # Push to DB queue (non-blocking)
+            try:
+                if self.db_queue:
+                    self.db_queue.put_nowait({
+                        '__kind__': 'packet',
+                        'timestamp': packet_info['timestamp'],
+                        'protocol': packet_info['protocol'],
+                        'src_ip': packet_info['src_ip'],
+                        'src_port': packet_info['src_port'],
+                        'dst_ip': packet_info['dst_ip'],
+                        'dst_port': packet_info['dst_port'],
+                        'size': packet_info['size'],
+                        'interface': self.interface
+                    })
+            except Exception:
+                pass
             
             # Track for analysis
             if packet_info['src_ip']:
@@ -202,7 +243,35 @@ class RealTimeMonitor:
         # Keep only recent alerts
         if len(self.alerts) > 100:
             self.alerts = self.alerts[-100:]
-    
+
+        # Kirim ke alert_queue untuk SSE stream
+        try:
+            if self.alert_queue:
+                self.alert_queue.put_nowait(alert)
+        except Exception:
+            pass
+
+        # Persist alert ke DB queue
+        try:
+            if self.db_queue:
+                self.db_queue.put_nowait({
+                    '__kind__': 'alert',
+                    'timestamp': alert.get('timestamp'),
+                    'type': alert.get('type'),
+                    'severity': alert.get('severity'),
+                    'source_ip': alert.get('source_ip'),
+                    'description': alert.get('description')
+                })
+        except Exception:
+            pass
+
+        # Opsional: kirim NOTIFY ke Postgres untuk konsumen eksternal
+        try:
+            from db import pg_notify
+            pg_notify('alerts', alert)
+        except Exception:
+            pass
+
     def _cleanup_old_data(self):
         """Clean up old tracking data"""
         # Reset packet counts
@@ -231,7 +300,7 @@ class RealTimeMonitor:
         """Get recent alerts"""
         return self.alerts[-limit:] if self.alerts else []
     
-    def get_recent_packets(self, limit=100):
+    def get_recent_packets(self, limit=50):
         """Get recent network packets/logs"""
         try:
             # Convert deque to list and get last 'limit' items
@@ -287,3 +356,644 @@ def get_monitoring_status():
 def get_live_alerts():
     """Get live alerts"""
     return monitor.get_alerts()
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    def _db_writer_loop(self):
+        """Batch insert packet logs and alerts into DB"""
+        try:
+            from db import DB_ENABLED, get_session, PacketLog, Alert
+            if not DB_ENABLED:
+                return
+            import time
+            batch = []
+            last_commit = time.time()
+            while True:
+                try:
+                    item = self.db_queue.get(timeout=0.5)
+                    batch.append(item)
+                except Exception:
+                    pass
+
+                now = time.time()
+                if batch and (len(batch) >= 500 or now - last_commit >= 1.0):
+                    session = get_session()
+                    try:
+                        for it in batch:
+                            kind = it.get('__kind__')
+                            if kind == 'alert':
+                                session.add(Alert(
+                                    ts=datetime.fromisoformat(it['timestamp']) if isinstance(it['timestamp'], str) else (it['timestamp'] or datetime.utcnow()),
+                                    type=it.get('type'),
+                                    severity=it.get('severity'),
+                                    source_ip=it.get('source_ip'),
+                                    description=it.get('description')
+                                ))
+                            else:
+                                session.add(PacketLog(
+                                    ts=datetime.fromisoformat(it['timestamp']) if isinstance(it['timestamp'], str) else (it['timestamp'] or datetime.utcnow()),
+                                    protocol=it.get('protocol'),
+                                    src_ip=it.get('src_ip'),
+                                    src_port=it.get('src_port'),
+                                    dst_ip=it.get('dst_ip'),
+                                    dst_port=it.get('dst_port'),
+                                    size=it.get('size'),
+                                    interface=it.get('interface')
+                                ))
+                        session.commit()
+                    except Exception as e:
+                        try:
+                            session.rollback()
+                        except Exception:
+                            pass
+                        self.logger.error(f"DB writer error: {e}")
+                    finally:
+                        try:
+                            session.close()
+                        except Exception:
+                            pass
+                    batch = []
+                    last_commit = now
+        except Exception as e:
+            self.logger.warning(f"DB writer loop exited: {e}")

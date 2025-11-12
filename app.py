@@ -1,9 +1,10 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, Response
 from datetime import datetime
 import os
 import sys
 import secrets
 import psutil
+import json
 
 # Add main directory to Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'main'))
@@ -285,6 +286,143 @@ def monitoring_logs():
             'count': 0,
             'error': str(e)
         })
+
+# SSE stream untuk live alerts
+@app.route('/api/monitoring/alerts/stream')
+@require_auth('view')
+def monitoring_alerts_stream():
+    try:
+        from real_time_alerts import monitor
+
+        def event_stream():
+            # Kirim keep-alive setiap beberapa detik untuk menjaga koneksi
+            while True:
+                try:
+                    alert = None
+                    if hasattr(monitor, 'alert_queue') and monitor.alert_queue:
+                        try:
+                            alert = monitor.alert_queue.get(timeout=10)
+                        except Exception:
+                            alert = None
+                    if alert:
+                        yield f"data: {json.dumps(alert)}\n\n"
+                    else:
+                        # keep-alive comment
+                        yield ": keep-alive\n\n"
+                except GeneratorExit:
+                    break
+                except Exception:
+                    # Hindari memutus stream karena error sementara
+                    yield ": keep-alive\n\n"
+
+        headers = {
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no'
+        }
+        return Response(event_stream(), mimetype='text/event-stream', headers=headers)
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# Endpoint history berbasis DB: logs
+@app.route('/api/history/logs', methods=['GET'])
+@require_auth('view')
+def history_logs():
+    try:
+        from db import DB_ENABLED, get_session, PacketLog
+        if not DB_ENABLED:
+            return jsonify({'status': 'error', 'message': 'Database not enabled'}), 400
+        session_db = get_session()
+        q = session_db.query(PacketLog)
+
+        # Filter opsional
+        limit = int(request.args.get('limit', '200'))
+        src_ip = request.args.get('src_ip')
+        protocol = request.args.get('protocol')
+        since = request.args.get('since')  # ISO timestamp
+
+        if src_ip:
+            q = q.filter(PacketLog.src_ip == src_ip)
+        if protocol:
+            q = q.filter(PacketLog.protocol == protocol)
+        if since:
+            try:
+                since_dt = datetime.fromisoformat(since)
+                q = q.filter(PacketLog.ts >= since_dt)
+            except Exception:
+                pass
+
+        q = q.order_by(PacketLog.ts.desc()).limit(min(max(limit, 1), 1000))
+        rows = q.all()
+        logs = [
+            {
+                'timestamp': r.ts.isoformat(),
+                'protocol': r.protocol,
+                'src_ip': r.src_ip,
+                'src_port': r.src_port or '',
+                'dst_ip': r.dst_ip,
+                'dst_port': r.dst_port or '',
+                'size': r.size,
+                'interface': r.interface,
+            }
+            for r in rows
+        ]
+        try:
+            session_db.close()
+        except Exception:
+            pass
+        return jsonify({'status': 'success', 'count': len(logs), 'logs': logs})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# Endpoint history berbasis DB: alerts
+@app.route('/api/history/alerts', methods=['GET'])
+@require_auth('view')
+def history_alerts():
+    try:
+        from db import DB_ENABLED, get_session, Alert
+        if not DB_ENABLED:
+            return jsonify({'status': 'error', 'message': 'Database not enabled'}), 400
+        session_db = get_session()
+        q = session_db.query(Alert)
+
+        limit = int(request.args.get('limit', '200'))
+        source_ip = request.args.get('source_ip')
+        alert_type = request.args.get('type')
+        severity = request.args.get('severity')
+        since = request.args.get('since')
+
+        if source_ip:
+            q = q.filter(Alert.source_ip == source_ip)
+        if alert_type:
+            q = q.filter(Alert.type == alert_type)
+        if severity:
+            q = q.filter(Alert.severity == severity)
+        if since:
+            try:
+                since_dt = datetime.fromisoformat(since)
+                q = q.filter(Alert.ts >= since_dt)
+            except Exception:
+                pass
+
+        q = q.order_by(Alert.ts.desc()).limit(min(max(limit, 1), 1000))
+        rows = q.all()
+        alerts = [
+            {
+                'timestamp': r.ts.isoformat(),
+                'type': r.type,
+                'severity': r.severity,
+                'source_ip': r.source_ip,
+                'description': r.description,
+            }
+            for r in rows
+        ]
+        try:
+            session_db.close()
+        except Exception:
+            pass
+        return jsonify({'status': 'success', 'count': len(alerts), 'alerts': alerts})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/ssh/generate-key', methods=['POST'])
 @require_auth('configure')

@@ -10649,3 +10649,8 @@
 2025-11-12 17:49:04,741 - INFO - 127.0.0.1 - - [12/Nov/2025 17:49:04] "GET /api/monitoring/statistics HTTP/1.1" 200 -
 2025-11-12 17:49:04,743 - INFO - 127.0.0.1 - - [12/Nov/2025 17:49:04] "GET /api/monitoring/alerts?limit=10 HTTP/1.1" 200 -
 2025-11-12 17:49:04,745 - INFO - 127.0.0.1 - - [12/Nov/2025 17:49:04] "GET /api/monitoring/logs HTTP/1.1" 200 -
+2025-11-12 17:49:05,684 - INFO - 127.0.0.1 - - [12/Nov/2025 17:49:05] "GET /api/monitoring/logs HTTP/1.1" 200 -
+2025-11-12 17:49:06,800 - INFO - 127.0.0.1 - - [12/Nov/2025 17:49:06] "GET /api/monitoring/status HTTP/1.1" 200 -
+2025-11-12 17:49:06,803 - INFO - 127.0.0.1 - - [12/Nov/2025 17:49:06] "GET /api/monitoring/statistics HTTP/1.1" 200 -
+2025-11-12 17:49:06,814 - INFO - 127.0.0.1 - - [12/Nov/2025 17:49:06] "GET /api/monitoring/alerts?limit=10 HTTP/1.1" 200 -
+2025-11-12 17:49:06,815 - INFO - 127.0.0.1 - - [12/Nov/2025 17:49:06] "GET /api/monitoring/logs HTTP/1.1" 200 -

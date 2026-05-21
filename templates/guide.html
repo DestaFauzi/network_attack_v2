@@ -1,7 +1,165 @@
-<h3>How to Use</h3>
-        <p>
-            1. Upload a PCAP file using the form below. <br>
-            2. The system will analyze the network traffic and detect any potential attacks. <br>
-            3. View the analysis results on the dashboard, including network traffic analysis and recent alerts. <br>
-            4. Download the analysis results for further review. <br>
-        </p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Guide - Network Intrusion Detection System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .step-number {
+            width: 40px;
+            height: 40px;
+            background-color: #0d6efd;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-right: 15px;
+        }
+        .step-container {
+            border-left: 2px solid #e9ecef;
+            padding-left: 35px;
+            margin-left: 20px;
+            padding-bottom: 40px;
+            position: relative;
+        }
+        .step-container:last-child {
+            border-left: none;
+            padding-bottom: 0;
+        }
+        .step-icon {
+            position: absolute;
+            left: -21px;
+            top: 0;
+        }
+    </style>
+</head>
+<body class="bg-light d-flex flex-column min-vh-100">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">Network Attack Detector by PCAP File</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/about">About</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/guide">Guide</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/documentation">Documentation</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5 flex-grow-1">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body p-5">
+                        <h2 class="text-center mb-5"><i class="bi bi-book me-2"></i>User Guide</h2>
+                        <p class="lead text-center mb-5">Step-by-step instructions on how to analyze your PCAP files and get security recommendations.</p>
+
+                        <!-- Step 1 -->
+                        <div class="step-container">
+                            <div class="step-icon">
+                                <div class="step-number">1</div>
+                            </div>
+                            <h4 class="fw-bold mb-3">Upload PCAP File</h4>
+                            <p>Begin by uploading the network traffic capture file you wish to analyze.</p>
+                            <div class="card bg-light border-0">
+                                <div class="card-body">
+                                    <ul>
+                                        <li>Go to the <strong>Home Page</strong>.</li>
+                                        <li>Drag and drop your file into the designated area or click to browse.</li>
+                                        <li><strong>Supported Formats:</strong> <code>.pcap</code> and <code>.pcapng</code>.</li>
+                                        <li><strong>Maximum Size:</strong> 150MB. (A warning popup will appear if the file size exceeds this limit)</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 2 -->
+                        <div class="step-container">
+                            <div class="step-icon">
+                                <div class="step-number">2</div>
+                            </div>
+                            <h4 class="fw-bold mb-3">Analyze Network Traffic</h4>
+                            <p>Once the file is selected, initiate the analysis process.</p>
+                            <div class="card bg-light border-0">
+                                <div class="card-body">
+                                    <ul>
+                                        <li>Click the <strong>"Analyze Network Traffic"</strong> button.</li>
+                                        <li>Wait for the system to process the file. This involves packet extraction, feature engineering, and Random Forest classification.</li>
+                                        <li>A loading spinner will indicate that the analysis is in progress.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 3 -->
+                        <div class="step-container">
+                            <div class="step-icon">
+                                <div class="step-number">3</div>
+                            </div>
+                            <h4 class="fw-bold mb-3">View Dashboard Results</h4>
+                            <p>After analysis is complete, you will be automatically redirected to the Dashboard.</p>
+                            <div class="card bg-light border-0">
+                                <div class="card-body">
+                                    <ul>
+                                        <li><strong>Attack Summary:</strong> Check the "Total Attacks" and "Blocked Attacks" cards.</li>
+                                        <li><strong>Visualizations:</strong> Explore charts for Attack Timeline, Attack Types, and Severity Levels.</li>
+                                        <li><strong>Network Details:</strong> Review Top Source IPs, Destination IPs, and Protocol Distribution.</li>
+                                        <li><strong>Packet Table:</strong> Inspect the detailed table of processed packets and their flags.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 4 -->
+                        <div class="step-container">
+                            <div class="step-icon">
+                                <div class="step-number">4</div>
+                            </div>
+                            <h4 class="fw-bold mb-3">Get Security Recommendations (Gemini AI)</h4>
+                            <p>Leverage Artificial Intelligence to get actionable security advice based on the specific threats detected in your file.</p>
+                            <div class="card bg-light border-0">
+                                <div class="card-body">
+                                    <ul>
+                                        <li>On the Dashboard, locate the <strong>"Analysis Results"</strong> card at the top.</li>
+                                        <li>Click the <strong><i class="fas fa-robot me-1"></i> Security Recommendation (AI)</strong> button.</li>
+                                        <li>The system will send the analysis summary to Gemini AI.</li>
+                                        <li>A popup will appear displaying tailored recommendations to mitigate the detected attacks (e.g., firewall rules, configuration changes).</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-white text-center py-3 mt-5">
+        <div class="container">
+            <p class="mb-0">&copy; <span id="currentYear"></span> Created by Desta Fauzi Hariyanto</p>
+        </div>
+    </footer>
+    <script>
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

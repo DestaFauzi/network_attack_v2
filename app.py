@@ -1,25 +1,58 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, Response
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, Response, send_file
 from datetime import datetime
 import os
 import sys
 import secrets
 import psutil
 import json
+import pandas as pd
+from dotenv import load_dotenv
 
 # Add main directory to Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'main'))
 
 # Import analyst functions
-from main.analyst import analyze_pcap, generate_report
+from main.analyst import analyze_pcap, generate_report, analyze_multiple_pcaps
 
 # Import authentication functions
 from login_live_monitoring import require_auth, LiveMonitoringAuth
 from config import get_default_interface
 
+# Import Database Models
+from models import db, PcapFile, Alert
+
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max file size
-app.secret_key = 'your-secret-key-here'  # Add secret key for sessions
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024 * 1024  # 2GB max request size (to support multiple large files)
+
+# Database Configuration
+# Using localhost, root user, empty password (default for DBngin/XAMPP)
+# Database name: network_attack_db
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@127.0.0.1:3306/network_attack_db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialize DB
+db.init_app(app)
+
+# Auto-migration for analysis_json column
+with app.app_context():
+    try:
+        from sqlalchemy import text
+        # Try to select the column to see if it exists
+        db.session.execute(text('SELECT analysis_json FROM uploads LIMIT 1'))
+    except Exception:
+        # If it fails, try to add the column
+        try:
+            db.session.rollback()
+            print("Adding analysis_json column to uploads table...")
+            # MySQL syntax
+            db.session.execute(text('ALTER TABLE uploads ADD COLUMN analysis_json LONGTEXT'))
+            db.session.commit()
+        except Exception as e:
+            print(f"Migration warning: {e}")
+
+load_dotenv()
+app.secret_key = os.getenv('SECRET_KEY', 'change-this-secret')
 
 # Initialize auth manager
 # Hapus baris ini:
@@ -27,6 +60,88 @@ app.secret_key = 'your-secret-key-here'  # Add secret key for sessions
 
 # Ganti dengan import:
 from login_live_monitoring import auth_manager
+
+@app.route('/about')
+def about():
+    return render_template('about.html')
+
+@app.route('/guide')
+def guide():
+    return render_template('guide.html')
+
+@app.route('/documentation')
+def documentation():
+    return render_template('documentation.html')
+
+@app.route('/api/ai/recommendations', methods=['POST'])
+def ai_recommendations():
+    try:
+        payload = request.get_json() or {}
+        analysis = payload.get('analysis') or payload.get('analysis_results') or {}
+        from ai_recommendations import generate_ai_recommendations
+        result = generate_ai_recommendations(analysis)
+        # Jika gagal atau rekomendasi kosong, kirim fallback supaya UI tidak kosong
+        recs = result.get('recommendations') or []
+        if result.get('status') != 'success' or not recs:
+            fallback_recs = [
+                'Enable SIEM correlation for detected attack types and top source IPs',
+                'Harden exposed services and apply rate limiting on suspected endpoints',
+                'Increase monitoring for protocols with highest anomaly counts',
+                'Segment network to isolate frequently targeted destinations',
+            ]
+            return jsonify({'status': 'success', 'recommendations': fallback_recs, 'message': result.get('message')})
+        # Include message if present (e.g., ai_fallback diagnostics)
+        response = {'status': 'success', 'recommendations': recs}
+        if result.get('message'):
+            response['message'] = result.get('message')
+        return jsonify(response)
+    except Exception as e:
+        # Jika terjadi exception, kirim fallback
+        fallback_recs = [
+            'Enable SIEM correlation for detected attack types and top source IPs',
+            'Harden exposed services and apply rate limiting on suspected endpoints',
+            'Increase monitoring for protocols with highest anomaly counts',
+            'Segment network to isolate frequently targeted destinations',
+        ]
+        return jsonify({'status': 'success', 'message': str(e), 'recommendations': fallback_recs}), 200
+
+# Proxy endpoint: generate raw AI text from prompt (keeps API key di server)
+@app.route('/api/ai/generate', methods=['POST'])
+def ai_generate():
+    try:
+        payload = request.get_json() or {}
+        prompt = payload.get('prompt', '').strip()
+        if not prompt:
+            return jsonify({'status': 'error', 'message': 'Missing prompt', 'text': ''}), 400
+
+        api_key = os.getenv('GEMINI_API_KEY')
+        if not api_key:
+            return jsonify({'status': 'error', 'message': 'Missing GEMINI_API_KEY', 'text': ''}), 200
+
+        # Reuse Gemini caller to keep logic consistent, with diagnostics
+        try:
+            from ai_recommendations import _call_gemini_with_diag as caller
+        except Exception:
+            from ai_recommendations import _call_gemini as caller
+
+        result = caller(prompt, api_key)
+
+        # If legacy caller is used, it returns a string
+        if isinstance(result, str):
+            text = result
+            if text:
+                return jsonify({'status': 'success', 'text': text})
+            else:
+                return jsonify({'status': 'success', 'text': '', 'message': 'empty_text'}), 200
+
+        # Diagnostics-aware response
+        text = result.get('text', '')
+        if text:
+            return jsonify({'status': 'success', 'text': text, 'diag': result})
+        else:
+            return jsonify({'status': 'success', 'text': '', 'message': 'empty_text', 'diag': result}), 200
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e), 'text': ''}), 200
 
 @app.route('/')
 def home():
@@ -40,6 +155,148 @@ def settings():
 def dashboard():
     return render_template('dashboard.html')
 
+@app.route('/history')
+def history_page():
+    return render_template('history.html')
+
+@app.route('/api/db/history')
+def get_db_history():
+    try:
+        # Fetch uploads sorted by newest first
+        uploads = PcapFile.query.order_by(PcapFile.upload_time.desc()).all()
+        return jsonify({
+            'status': 'success',
+            'data': [u.to_dict() for u in uploads]
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/db/report/<int:upload_id>')
+def get_db_report(upload_id):
+    try:
+        upload = PcapFile.query.get_or_404(upload_id)
+        
+        # Check if full analysis JSON is stored
+        if upload.analysis_json:
+            analysis_result = json.loads(upload.analysis_json)
+        else:
+            # Fallback: Try to re-analyze if file exists
+            # Handle both single file path and JSON list of paths (batch upload)
+            is_batch = upload.filepath.strip().startswith('[') and ']' in upload.filepath
+            
+            if os.path.exists(upload.filepath) or is_batch:
+                try:
+                    print(f"Re-analyzing {upload.filepath} for full report...")
+                    
+                    if is_batch:
+                        try:
+                            file_paths = json.loads(upload.filepath)
+                            timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+                            output_prefix = os.path.join(app.config['UPLOAD_FOLDER'], f"reanalysis_{timestamp_str}_batch_{upload.id}")
+                            analysis_result = analyze_multiple_pcaps(file_paths, output_prefix)
+                        except json.JSONDecodeError:
+                            # Fallback if not valid JSON but looks like a list
+                            analysis_result = analyze_pcap(upload.filepath)
+                    else:
+                        # Re-run analysis to get full data (packet samples, ML metrics)
+                        analysis_result = analyze_pcap(upload.filepath)
+                    
+                    # Update DB with full JSON for future
+                    # Limit alerts in JSON to prevent performance issues (keep top 5000)
+                    json_analysis = analysis_result.copy()
+                    if len(json_analysis.get('alerts', [])) > 5000:
+                         json_analysis['alerts'] = json_analysis['alerts'][:5000]
+
+                    upload.analysis_json = json.dumps(json_analysis, default=str)
+                    
+                    # Update summary fields in case they changed
+                    upload.file_size = analysis_result.get('summary', {}).get('file_size', upload.file_size)
+                    upload.total_packets = analysis_result.get('summary', {}).get('total_packets', upload.total_packets)
+                    upload.malicious_packets = analysis_result.get('summary', {}).get('total_alerts', upload.malicious_packets)
+                    
+                    # Update Alerts table: Delete old, Insert new (bulk)
+                    try:
+                        Alert.query.filter_by(upload_id=upload.id).delete()
+                        
+                        alerts_list = analysis_result.get('alerts', [])
+                        if alerts_list:
+                             alert_mappings = []
+                             for alert in alerts_list:
+                                 alert_mappings.append({
+                                     'upload_id': upload.id,
+                                     'rule_name': alert.get('rule_name'),
+                                     'severity': alert.get('severity'),
+                                     'description': alert.get('description'),
+                                     'timestamp': alert.get('timestamp'),
+                                     'src_ip': alert.get('src_ip'),
+                                     'dst_ip': alert.get('dst_ip'),
+                                     'src_port': alert.get('src_port'),
+                                     'dst_port': alert.get('dst_port'),
+                                     'protocol': alert.get('protocol'),
+                                     'detection_method': alert.get('detection_method')
+                                 })
+                             db.session.bulk_insert_mappings(Alert, alert_mappings)
+                    except Exception as alert_err:
+                        print(f"Warning: Failed to update Alert table: {alert_err}")
+                        # Don't fail the whole request if Alert table update fails, 
+                        # analysis_json is enough for dashboard.
+
+                    db.session.commit()
+                except Exception as e:
+                    print(f"Re-analysis failed: {e}")
+                    # Fallback to partial reconstruction
+                    alerts = Alert.query.filter_by(upload_id=upload_id).all()
+                    alerts_data = [a.to_dict() for a in alerts]
+                    attack_types = {}
+                    for a in alerts:
+                        rule = a.rule_name
+                        attack_types[rule] = attack_types.get(rule, 0) + 1
+                    
+                    analysis_result = {
+                        'file_info': {
+                            'filename': upload.filename,
+                            'size': upload.file_size,
+                            'total_packets': upload.total_packets
+                        },
+                        'summary': {
+                            'total_alerts': upload.malicious_packets,
+                            'attack_types': attack_types
+                        },
+                        'alerts': alerts_data
+                    }
+            else:
+                # Fallback to partial reconstruction
+                alerts = Alert.query.filter_by(upload_id=upload_id).all()
+                alerts_data = [a.to_dict() for a in alerts]
+                attack_types = {}
+                for a in alerts:
+                    rule = a.rule_name
+                    attack_types[rule] = attack_types.get(rule, 0) + 1
+                
+                analysis_result = {
+                    'file_info': {
+                        'filename': upload.filename,
+                        'size': upload.file_size,
+                        'total_packets': upload.total_packets
+                    },
+                    'summary': {
+                        'total_alerts': upload.malicious_packets,
+                        'attack_types': attack_types
+                    },
+                    'alerts': alerts_data
+                }
+        
+        report_data = generate_report(analysis_result)
+        
+        return jsonify({
+            'status': 'success',
+            'filename': upload.filename,
+            'analysis': analysis_result,
+            'report': report_data
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 @app.route('/main/analyst', methods=['GET', 'POST'])
 def upload_pcap():
     if request.method == 'GET':
@@ -51,38 +308,112 @@ def upload_pcap():
             if 'pcapFile' not in request.files:
                 return jsonify({'error': 'No file uploaded', 'status': 'failed'}), 400
             
-            file = request.files['pcapFile']
+            files = request.files.getlist('pcapFile')
             
-            # Check if file is selected
-            if file.filename == '':
+            # Check if any file is selected
+            if not files or files[0].filename == '':
                 return jsonify({'error': 'No file selected', 'status': 'failed'}), 400
-            
-            # Check file extension
-            if not file.filename.lower().endswith(('.pcap', '.pcapng')):
-                return jsonify({'error': 'Invalid file format. Only .pcap and .pcapng files are allowed.', 'status': 'failed'}), 400
             
             # Create uploads directory if it doesn't exist
             os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
             
-            # Generate unique filename with timestamp
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f"{timestamp}_{file.filename}"
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            saved_paths = []
+            filenames = []
             
-            # Save file
-            file.save(filepath)
+            timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
             
-            # Analyze the pcap file
-            print(f"Starting analysis of: {filepath}")
-            analysis_result = analyze_pcap(filepath)
+            for file in files:
+                # Check file extension
+                if not file.filename.lower().endswith(('.pcap', '.pcapng')):
+                    continue # Skip invalid files
+                
+                # Generate unique filename with timestamp
+                filename = f"{timestamp_str}_{file.filename}"
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                
+                # Save file
+                file.save(filepath)
+                saved_paths.append(filepath)
+                filenames.append(file.filename)
+            
+            if not saved_paths:
+                 return jsonify({'error': 'No valid .pcap/.pcapng files uploaded', 'status': 'failed'}), 400
+
+            # Analyze based on count
+            if len(saved_paths) == 1:
+                filepath = saved_paths[0]
+                print(f"Starting analysis of: {filepath}")
+                analysis_result = analyze_pcap(filepath)
+                final_filename = filenames[0]
+                final_filepath = filepath
+            else:
+                print(f"Starting batch analysis of {len(saved_paths)} files")
+                # Use the first file's timestamp/prefix for the combined output
+                output_prefix = os.path.join(app.config['UPLOAD_FOLDER'], f"{timestamp_str}_batch_combined")
+                analysis_result = analyze_multiple_pcaps(saved_paths, output_prefix)
+                final_filename = f"Batch Analysis ({len(saved_paths)} files): {', '.join(filenames[:3])}{'...' if len(filenames) > 3 else ''}"
+                # Store list of paths as JSON string
+                final_filepath = json.dumps(saved_paths)
             
             if analysis_result:
                 # Generate report
                 report_data = generate_report(analysis_result)
+
+                # --- DATABASE INTEGRATION START ---
+                try:
+                    # 1. Create PcapFile record
+                    # Create a copy for JSON storage to avoid modifying the original
+                    json_analysis = analysis_result.copy()
+                    # Limit alerts in JSON to prevent performance issues (keep top 5000)
+                    if len(json_analysis.get('alerts', [])) > 5000:
+                         json_analysis['alerts'] = json_analysis['alerts'][:5000]
+
+                    pcap_entry = PcapFile(
+                        filename=final_filename,
+                        filepath=final_filepath,
+                        file_size=analysis_result.get('summary', {}).get('file_size', '0 MB'),
+                        total_packets=analysis_result.get('summary', {}).get('total_packets', 0),
+                        malicious_packets=analysis_result.get('summary', {}).get('total_alerts', 0),
+                        status='Success',
+                        analysis_json=json.dumps(json_analysis, default=str)
+                    )
+                    db.session.add(pcap_entry)
+                    db.session.flush() # Get ID before commit
+
+                    # 2. Save Alerts (Bulk Insert for performance)
+                    alerts_list = analysis_result.get('alerts', [])
+                    if alerts_list:
+                        alert_mappings = []
+                        for alert in alerts_list:
+                            alert_mappings.append({
+                                'upload_id': pcap_entry.id,
+                                'rule_name': alert.get('rule_name'),
+                                'severity': alert.get('severity'),
+                                'description': alert.get('description'),
+                                'timestamp': alert.get('timestamp'),
+                                'src_ip': alert.get('src_ip'),
+                                'dst_ip': alert.get('dst_ip'),
+                                'src_port': alert.get('src_port'),
+                                'dst_port': alert.get('dst_port'),
+                                'protocol': alert.get('protocol'),
+                                'detection_method': alert.get('detection_method')
+                            })
+                        
+                        # Use bulk_insert_mappings for better performance with large datasets
+                        db.session.bulk_insert_mappings(Alert, alert_mappings)
+                    
+                    db.session.commit()
+                    print(f"Saved analysis to database with ID: {pcap_entry.id}")
+
+                except Exception as db_err:
+                    db.session.rollback()
+                    print(f"Database error: {str(db_err)}")
+                    # Continue anyway, don't fail the request just because DB failed
+                # --- DATABASE INTEGRATION END ---
                 
                 return jsonify({
-                    'message': 'File uploaded and analyzed successfully',
-                    'filename': filename,
+                    'message': 'Files uploaded and analyzed successfully',
+                    'filename': final_filename,
                     'analysis': analysis_result,
                     'report': report_data,
                     'status': 'success'
@@ -663,5 +994,82 @@ def debug_test_ssh():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/packets', methods=['GET'])
+def get_packets():
+    try:
+        filename = request.args.get('filename')
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 50))
+        
+        if not filename:
+            return jsonify({'error': 'Filename is required'}), 400
+            
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        if not os.path.exists(file_path):
+            return jsonify({'error': 'File not found'}), 404
+            
+        # Read CSV file (assuming file size is manageable as per upload limit)
+        df = pd.read_csv(file_path)
+        total_records = len(df)
+        
+        # Calculate pagination
+        start_idx = (page - 1) * limit
+        end_idx = start_idx + limit
+        
+        # Get slice
+        data_slice = df.iloc[start_idx:end_idx]
+        
+        return jsonify({
+            'data': data_slice.fillna('Unknown').to_dict(orient='records'),
+            'total': total_records,
+            'page': page,
+            'limit': limit,
+            'pages': (total_records + limit - 1) // limit
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/export/packets', methods=['GET'])
+def export_packets():
+    try:
+        filename = request.args.get('filename')
+        if not filename:
+            return jsonify({'error': 'Filename is required'}), 400
+            
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        if not os.path.exists(file_path):
+            return jsonify({'error': 'File not found'}), 404
+            
+        # Read CSV
+        df = pd.read_csv(file_path)
+        
+        # Define Excel filename
+        excel_filename = filename.replace('.csv', '.xlsx')
+        if not excel_filename.endswith('.xlsx'):
+             excel_filename += '.xlsx'
+             
+        excel_path = os.path.join(app.config['UPLOAD_FOLDER'], excel_filename)
+        
+        # Remove existing file if it exists to ensure fresh write
+        if os.path.exists(excel_path):
+            try:
+                os.remove(excel_path)
+            except Exception:
+                pass
+
+        # Save to Excel
+        df.to_excel(excel_path, index=False, engine='openpyxl')
+        
+        return send_file(
+            excel_path,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name='preprocessing_results.xlsx'
+        )
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5001)

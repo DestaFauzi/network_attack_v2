@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation - Network Intrusion Detection System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .rule-card {
+            transition: transform 0.2s;
+            border-left: 4px solid #0d6efd;
+        }
+        .rule-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+        }
+        .severity-high { border-left-color: #dc3545; }
+        .severity-medium { border-left-color: #ffc107; }
+        .severity-low { border-left-color: #0dcaf0; }
+        
+        .badge-high { background-color: #dc3545; }
+        .badge-medium { background-color: #ffc107; color: #000; }
+        .badge-low { background-color: #0dcaf0; color: #000; }
+    </style>
+</head>
+<body class="bg-light d-flex flex-column min-vh-100">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">Network Attack Detector by PCAP File</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/about">About</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/guide">Guide</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/documentation">Documentation</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5 flex-grow-1">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="text-center mb-5">
+                    <h2 class="fw-bold"><i class="bi bi-file-text me-2"></i>Documentation</h2>
+                    <p class="lead text-muted">Technical details about the detected attacks and classification rules.</p>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-5">
+                    <div class="card-body p-4">
+                        <h4 class="mb-4 text-primary fw-bold">Supported Attack Classifications</h4>
+                        <p>The system utilizes a hybrid detection engine combining <strong>Behavioral Analysis</strong> and <strong>Random Forest Classification</strong>. Below are the 11 specific attack types currently identified by the system, along with their detection logic and triggering thresholds.</p>
+                        
+                        <div class="row g-4 mt-2">
+                            
+                            <!-- 1. TCP SYN Flood -->
+                            <div class="col-md-6">
+                                <div class="card h-100 shadow-sm rule-card severity-high">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="card-title fw-bold">1. TCP SYN Flood</h5>
+                                            <span class="badge badge-high rounded-pill">High Severity</span>
+                                        </div>
+                                        <p class="card-text text-muted small">Denial of Service attack that consumes server resources by initiating many connections without completing the handshake.</p>
+                                        <hr>
+                                        <div class="small">
+                                            <p class="mb-1"><strong><i class="bi bi-gear-fill me-1"></i> Detection Rule:</strong></p>
+                                            <ul class="list-unstyled mb-0">
+                                                <li>• Protocol: TCP</li>
+                                                <li>• Flags: SYN set, ACK not set</li>
+                                                <li>• Threshold: > 100 pps (packets per second) average over 10s window</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 2. ICMP Flood -->
+                            <div class="col-md-6">
+                                <div class="card h-100 shadow-sm rule-card severity-medium">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="card-title fw-bold">2. ICMP Flood</h5>
+                                            <span class="badge badge-medium rounded-pill">Medium Severity</span>
+                                        </div>
+                                        <p class="card-text text-muted small">Overwhelms the target with ICMP Echo Request (Ping) packets.</p>
+                                        <hr>
+                                        <div class="small">
+                                            <p class="mb-1"><strong><i class="bi bi-gear-fill me-1"></i> Detection Rule:</strong></p>
+                                            <ul class="list-unstyled mb-0">
+                                                <li>• Protocol: ICMP</li>
+                                                <li>• Threshold: > 50 pps average over 5s window</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 3. Port Scan -->
+                            <div class="col-md-6">
+                                <div class="card h-100 shadow-sm rule-card severity-medium">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="card-title fw-bold">3. Port Scan</h5>
+                                            <span class="badge badge-medium rounded-pill">Medium Severity</span>
+                                        </div>
+                                        <p class="card-text text-muted small">Reconnaissance activity to identify open ports and services on a target system.</p>
+                                        <hr>
+                                        <div class="small">
+                                            <p class="mb-1"><strong><i class="bi bi-gear-fill me-1"></i> Detection Rule:</strong></p>
+                                            <ul class="list-unstyled mb-0">
+                                                <li>• Protocol: TCP / UDP</li>
+                                                <li>• Logic: Single Source IP connecting to > 10 unique Destination Ports within 30s</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 4. HTTP Flood -->
+                            <div class="col-md-6">
+                                <div class="card h-100 shadow-sm rule-card severity-medium">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="card-title fw-bold">4. HTTP Flood</h5>
+                                            <span class="badge badge-medium rounded-pill">Medium Severity</span>
+                                        </div>
+                                        <p class="card-text text-muted small">Layer 7 DDoS attack aimed at web servers and applications.</p>
+                                        <hr>
+                                        <div class="small">
+                                            <p class="mb-1"><strong><i class="bi bi-gear-fill me-1"></i> Detection Rule:</strong></p>
+                                            <ul class="list-unstyled mb-0">
+                                                <li>• Protocol: TCP (Port 80/443)</li>
+                                                <li>• Threshold: > 50 requests/sec average over 10s window</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 5. DNS Amplification -->
+                            <div class="col-md-6">
+                                <div class="card h-100 shadow-sm rule-card severity-high">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="card-title fw-bold">5. DNS Amplification</h5>
+                                            <span class="badge badge-high rounded-pill">High Severity</span>
+                                        </div>
+                                        <p class="card-text text-muted small">Reflection attack using open DNS resolvers to flood a target with large responses.</p>
+                                        <hr>
+                                        <div class="small">
+                                            <p class="mb-1"><strong><i class="bi bi-gear-fill me-1"></i> Detection Rule:</strong></p>
+                                            <ul class="list-unstyled mb-0">
+                                                <li>• Protocol: UDP (Source Port 53)</li>
+                                                <li>• Threshold: > 50 pps response rate</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 6. SSH Brute Force -->
+                            <div class="col-md-6">
+                                <div class="card h-100 shadow-sm rule-card severity-medium">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="card-title fw-bold">6. SSH Brute Force</h5>
+                                            <span class="badge badge-medium rounded-pill">Medium Severity</span>
+                                        </div>
+                                        <p class="card-text text-muted small">Repeated attempts to guess SSH credentials.</p>
+                                        <hr>
+                                        <div class="small">
+                                            <p class="mb-1"><strong><i class="bi bi-gear-fill me-1"></i> Detection Rule:</strong></p>
+                                            <ul class="list-unstyled mb-0">
+                                                <li>• Protocol: TCP (Dst Port 22)</li>
+                                                <li>• Flags: SYN</li>
+                                                <li>• Threshold: > 20 connection attempts in 60s from single Source IP</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 7. RDP Scan -->
+                            <div class="col-md-6">
+                                <div class="card h-100 shadow-sm rule-card severity-medium">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="card-title fw-bold">7. RDP Scan</h5>
+                                            <span class="badge badge-medium rounded-pill">Medium Severity</span>
+                                        </div>
+                                        <p class="card-text text-muted small">Scanning for exposed Remote Desktop Protocol services.</p>
+                                        <hr>
+                                        <div class="small">
+                                            <p class="mb-1"><strong><i class="bi bi-gear-fill me-1"></i> Detection Rule:</strong></p>
+                                            <ul class="list-unstyled mb-0">
+                                                <li>• Protocol: TCP (Dst Port 3389)</li>
+                                                <li>• Flags: SYN</li>
+                                                <li>• Threshold: > 10 attempts in 30s</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 8. SMB Scan -->
+                            <div class="col-md-6">
+                                <div class="card h-100 shadow-sm rule-card severity-medium">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="card-title fw-bold">8. SMB Scan</h5>
+                                            <span class="badge badge-medium rounded-pill">Medium Severity</span>
+                                        </div>
+                                        <p class="card-text text-muted small">Scanning for exposed Windows file sharing services (often used by ransomware).</p>
+                                        <hr>
+                                        <div class="small">
+                                            <p class="mb-1"><strong><i class="bi bi-gear-fill me-1"></i> Detection Rule:</strong></p>
+                                            <ul class="list-unstyled mb-0">
+                                                <li>• Protocol: TCP (Dst Port 139/445)</li>
+                                                <li>• Flags: SYN</li>
+                                                <li>• Threshold: > 15 attempts in 30s</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 9. BACnet Broadcast -->
+                            <div class="col-md-6">
+                                <div class="card h-100 shadow-sm rule-card severity-medium">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="card-title fw-bold">9. BACnet Broadcast</h5>
+                                            <span class="badge badge-medium rounded-pill">Medium Severity</span>
+                                        </div>
+                                        <p class="card-text text-muted small">Abnormal broadcast traffic in Industrial Control Systems (ICS/OT).</p>
+                                        <hr>
+                                        <div class="small">
+                                            <p class="mb-1"><strong><i class="bi bi-gear-fill me-1"></i> Detection Rule:</strong></p>
+                                            <ul class="list-unstyled mb-0">
+                                                <li>• Protocol: UDP (Dst Port 47808)</li>
+                                                <li>• Threshold: > 20 pps average over 15s window</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 10. Modbus TCP -->
+                            <div class="col-md-6">
+                                <div class="card h-100 shadow-sm rule-card severity-medium">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="card-title fw-bold">10. Modbus TCP Suspect</h5>
+                                            <span class="badge badge-medium rounded-pill">Medium Severity</span>
+                                        </div>
+                                        <p class="card-text text-muted small">Anomalous high-frequency requests in SCADA/ICS networks.</p>
+                                        <hr>
+                                        <div class="small">
+                                            <p class="mb-1"><strong><i class="bi bi-gear-fill me-1"></i> Detection Rule:</strong></p>
+                                            <ul class="list-unstyled mb-0">
+                                                <li>• Protocol: TCP (Dst Port 502)</li>
+                                                <li>• Threshold: > 10 req/sec average over 20s window</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 11. NTP Amplification -->
+                            <div class="col-md-6">
+                                <div class="card h-100 shadow-sm rule-card severity-medium">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="card-title fw-bold">11. NTP Amplification</h5>
+                                            <span class="badge badge-medium rounded-pill">Medium Severity</span>
+                                        </div>
+                                        <p class="card-text text-muted small">Reflection attack utilizing Network Time Protocol servers.</p>
+                                        <hr>
+                                        <div class="small">
+                                            <p class="mb-1"><strong><i class="bi bi-gear-fill me-1"></i> Detection Rule:</strong></p>
+                                            <ul class="list-unstyled mb-0">
+                                                <li>• Protocol: UDP (Source Port 123)</li>
+                                                <li>• Threshold: > 20 pps response rate</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-white text-center py-3 mt-5">
+        <div class="container">
+            <p class="mb-0">&copy; <span id="currentYear"></span> Created by Desta Fauzi Hariyanto</p>
+        </div>
+    </footer>
+    <script>
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

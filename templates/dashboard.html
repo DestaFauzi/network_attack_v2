@@ -276,7 +276,7 @@
                 <div class="card shadow-sm border-0">
                     <div class="card-header bg-white border-bottom-0 pt-4 px-4">
                         <h5 class="mb-0 fw-bold text-primary"><i class="fas fa-chart-line me-2"></i>Random Forest Model Performance</h5>
-                        <p class="text-muted small mb-0 mt-1">Evaluation metrics based on internal model validation</p>
+                        <p class="text-muted small mb-0 mt-1">Evaluation metrics based on internal model validation (Best Ratio: <span id="bestRatioText">-</span>)</p>
                     </div>
                     <div class="card-body px-4 pb-4">
                         <div class="row text-center g-3">
@@ -455,8 +455,8 @@
                         <div class="alert alert-light border mt-4 mb-0 d-flex align-items-center">
                             <i class="fas fa-info-circle text-primary fs-4 me-3"></i>
                             <div>
-                                <small class="text-muted">
-                                    These metrics are calculated by training a <strong>Random Forest Classifier</strong> on 70% of the uploaded data and testing it on the remaining 30%. 
+                                <small class="text-muted" id="mlInfoText">
+                                    These metrics are calculated by training a <strong>Random Forest Classifier</strong> on the best performing split ratio. 
                                     The Rule-Based Detection results are used as the "Ground Truth" labels for this evaluation.
                                 </small>
                             </div>
@@ -469,9 +469,9 @@
 
     <!-- Footer -->
     <footer class="bg-dark text-white text-center py-3 mt-5">
-        <!-- <div class="container">
+        <div class="container">
             <p class="mb-0">&copy; <span id="currentYear"></span> Created by Desta Fauzi Hariyanto</p>
-        </div> -->
+        </div>
     </footer>
     <script>
         document.getElementById('currentYear').textContent = new Date().getFullYear();
@@ -726,6 +726,23 @@
                 updateMetric('metricPrecision', 'progressPrecision', data.ml_performance.precision);
                 updateMetric('metricRecall', 'progressRecall', data.ml_performance.recall);
                 updateMetric('metricF1', 'progressF1', data.ml_performance.f1_score);
+                
+                // Update selected ratio text
+                if (data.ml_performance.selected_ratio) {
+                    const ratioText = document.getElementById('bestRatioText');
+                    if (ratioText) ratioText.textContent = data.ml_performance.selected_ratio;
+                    
+                    const infoText = document.getElementById('mlInfoText');
+                    if (infoText) {
+                        const parts = data.ml_performance.selected_ratio.split(':');
+                        const trainPct = parts[0];
+                        const testPct = parts[1];
+                        infoText.innerHTML = `
+                            These metrics are calculated by training a <strong>Random Forest Classifier</strong> on the best performing split ratio (${trainPct}% for training and ${testPct}% for testing). 
+                            The Rule-Based Detection results are used as the "Ground Truth" labels for this evaluation.
+                        `;
+                    }
+                }
                 
                 // Update Confusion Matrix
                 if (data.ml_performance.confusion_matrix) {
@@ -1053,53 +1070,41 @@
                     const yMax = Math.min(100, Math.ceil(maxVal + padding));
                     
                     window.splitChartInstance = new Chart(ctxSplit, {
-                        type: 'line',
+                        type: 'bar',
                         data: {
                             labels: labels,
                             datasets: [
                                 {
                                     label: 'Accuracy',
                                     data: acc,
+                                    backgroundColor: 'rgba(13, 110, 253, 0.7)',
                                     borderColor: 'rgba(13, 110, 253, 1)',
-                                    backgroundColor: 'rgba(13, 110, 253, 0.15)',
-                                    pointBackgroundColor: 'rgba(13, 110, 253, 1)',
-                                    pointBorderColor: '#fff',
-                                    pointRadius: 4,
-                                    tension: 0.25,
-                                    fill: false
+                                    borderWidth: 1,
+                                    borderRadius: 4
                                 },
                                 {
                                     label: 'Precision',
                                     data: prec,
+                                    backgroundColor: 'rgba(25, 135, 84, 0.7)',
                                     borderColor: 'rgba(25, 135, 84, 1)',
-                                    backgroundColor: 'rgba(25, 135, 84, 0.15)',
-                                    pointBackgroundColor: 'rgba(25, 135, 84, 1)',
-                                    pointBorderColor: '#fff',
-                                    pointRadius: 4,
-                                    tension: 0.25,
-                                    fill: false
+                                    borderWidth: 1,
+                                    borderRadius: 4
                                 },
                                 {
                                     label: 'Recall',
                                     data: rec,
+                                    backgroundColor: 'rgba(255, 193, 7, 0.7)',
                                     borderColor: 'rgba(255, 193, 7, 1)',
-                                    backgroundColor: 'rgba(255, 193, 7, 0.15)',
-                                    pointBackgroundColor: 'rgba(255, 193, 7, 1)',
-                                    pointBorderColor: '#fff',
-                                    pointRadius: 4,
-                                    tension: 0.25,
-                                    fill: false
+                                    borderWidth: 1,
+                                    borderRadius: 4
                                 },
                                 {
                                     label: 'F1-Score',
                                     data: f1,
+                                    backgroundColor: 'rgba(220, 53, 69, 0.7)',
                                     borderColor: 'rgba(220, 53, 69, 1)',
-                                    backgroundColor: 'rgba(220, 53, 69, 0.15)',
-                                    pointBackgroundColor: 'rgba(220, 53, 69, 1)',
-                                    pointBorderColor: '#fff',
-                                    pointRadius: 4,
-                                    tension: 0.25,
-                                    fill: false
+                                    borderWidth: 1,
+                                    borderRadius: 4
                                 }
                             ]
                         },
@@ -1124,7 +1129,7 @@
                                 },
                                 title: {
                                     display: true,
-                                    text: 'Model Performance by Split Ratio'
+                                    text: 'Model Performance Comparison by Split Ratio'
                                 },
                                 tooltip: {
                                     mode: 'index',
@@ -2806,7 +2811,7 @@ async function exportExecutiveSummaryAI() {
                 const k = r.toLowerCase();
                 if (!seen.has(k)) { seen.add(k); out.push(r); }
             }
-            return out.slice(0,8);
+            return out.slice(0,14);
         };
 
         // Coba generate AI di sisi klien melalui proxy server (keamanan API key tetap di server)
@@ -2858,13 +2863,13 @@ async function exportExecutiveSummaryAI() {
             }
 
             const finalRecs = recs.length ? recs : [
-                'Continue regular security monitoring and log analysis',
                 'Enable SIEM correlation for detected attack types and top source IPs',
                 'Harden exposed services and apply rate limiting on suspected endpoints',
+                'Increase monitoring for protocols with highest anomaly counts',
                 'Segment network to isolate frequently targeted destinations'
             ];
 
-        finalRecs.slice(0, 8).forEach((rec, idx) => {
+        finalRecs.slice(0, 14).forEach((rec, idx) => {
             let content = cleanLineAI(rec);
             const wrapped = doc.splitTextToSize(`${idx + 1}. ${content}`, pageWidth - margin*2);
             wrapped.forEach(line => {

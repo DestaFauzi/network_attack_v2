@@ -5,8 +5,6 @@ def init_database():
     # Configuration
     db_uri = app.config['SQLALCHEMY_DATABASE_URI']
     
-    # Extract connection details
-    # Assumes format: mysql+pymysql://user:pass@host:port/dbname
     try:
         from urllib.parse import urlparse
         result = urlparse(db_uri)

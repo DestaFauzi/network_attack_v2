@@ -14,7 +14,7 @@ class PcapFile(db.Model):
     total_packets = db.Column(db.Integer)
     malicious_packets = db.Column(db.Integer)
     status = db.Column(db.String(50), default='Processed')
-    analysis_json = db.Column(db.Text) # Store full analysis result as JSON string
+    analysis_json = db.Column(db.Text) 
     
     # Relationship with Alerts
     alerts = db.relationship('Alert', backref='pcap_file', lazy=True, cascade="all, delete-orphan")

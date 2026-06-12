@@ -2,28 +2,18 @@ from scapy.all import *
 import pandas as pd
 import numpy as np
 
-# Keep empty rules_list for backward compatibility if needed, 
-# but we will switch to behavioral analysis.
 rules_list = []
 
 def detect_time_based_attacks(df):
-    """
-    Apply time-based behavioral detection rules based on the user provided table.
-    Returns:
-        - df: DataFrame with 'label' column updated (1 for attack)
-        - alerts: List of alert dictionaries
-        - stats: Dictionary of packet counts per rule
-    """
+    
     alerts = []
     stats = {}
     
-    # Ensure timestamp is datetime
     if not pd.api.types.is_datetime64_any_dtype(df['timestamp']):
         df['timestamp'] = pd.to_datetime(df['timestamp'])
         
     df = df.sort_values('timestamp')
-    
-    # DEBUG: Print data stats
+
     print(f"DEBUG: Behavioral Analysis - {len(df)} packets")
     print(f"DEBUG: Time range: {df['timestamp'].min()} to {df['timestamp'].max()}")
     if 'protocol' in df.columns:
@@ -31,12 +21,10 @@ def detect_time_based_attacks(df):
     if 'flags' in df.columns:
         print(f"DEBUG: Sample Flags: {df['flags'].head().tolist()}")
 
-    # Helper to check flags safely
     def has_flag(flags_str, flag_char):
         if not isinstance(flags_str, str): return False
         return flag_char in flags_str
         
-    # Create masks for protocols
     is_tcp = df['protocol'] == 'TCP'
     is_udp = df['protocol'] == 'UDP'
     is_icmp = df['protocol'] == 'ICMP'

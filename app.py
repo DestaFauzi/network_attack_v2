@@ -24,10 +24,6 @@ from models import db, PcapFile, Alert
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024 * 1024  # 2GB max request size (to support multiple large files)
-
-# Database Configuration
-# Using localhost, root user, empty password (default for DBngin/XAMPP)
-# Database name: network_attack_db
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@127.0.0.1:3306/network_attack_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -80,30 +76,26 @@ def ai_recommendations():
         analysis = payload.get('analysis') or payload.get('analysis_results') or {}
         from ai_recommendations import generate_ai_recommendations
         result = generate_ai_recommendations(analysis)
-        # Jika gagal atau rekomendasi kosong, kirim fallback supaya UI tidak kosong
-        recs = result.get('recommendations') or []
-        if result.get('status') != 'success' or not recs:
-            fallback_recs = [
+        
+        # Include diagnostic message if present
+        response = {
+            'status': 'success' if result.get('status') == 'success' else 'error',
+            'recommendations': result.get('recommendations', []),
+            'message': result.get('message')
+        }
+        return jsonify(response)
+    except Exception as e:
+        # Jika terjadi exception fatal di tingkat route
+        return jsonify({
+            'status': 'error', 
+            'message': str(e), 
+            'recommendations': [
                 'Enable SIEM correlation for detected attack types and top source IPs',
                 'Harden exposed services and apply rate limiting on suspected endpoints',
                 'Increase monitoring for protocols with highest anomaly counts',
                 'Segment network to isolate frequently targeted destinations',
             ]
-            return jsonify({'status': 'success', 'recommendations': fallback_recs, 'message': result.get('message')})
-        # Include message if present (e.g., ai_fallback diagnostics)
-        response = {'status': 'success', 'recommendations': recs}
-        if result.get('message'):
-            response['message'] = result.get('message')
-        return jsonify(response)
-    except Exception as e:
-        # Jika terjadi exception, kirim fallback
-        fallback_recs = [
-            'Enable SIEM correlation for detected attack types and top source IPs',
-            'Harden exposed services and apply rate limiting on suspected endpoints',
-            'Increase monitoring for protocols with highest anomaly counts',
-            'Segment network to isolate frequently targeted destinations',
-        ]
-        return jsonify({'status': 'success', 'message': str(e), 'recommendations': fallback_recs}), 200
+        }), 200
 
 # Proxy endpoint: generate raw AI text from prompt (keeps API key di server)
 @app.route('/api/ai/generate', methods=['POST'])

@@ -24,7 +24,7 @@ from models import db, PcapFile, Alert
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024 * 1024  # 2GB max request size (to support multiple large files)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@127.0.0.1:3306/network_attack_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_MYSQL_URL', 'mysql+pymysql://root:@127.0.0.1:3306/network_attack_db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize DB

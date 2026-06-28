@@ -116,7 +116,7 @@
                             tr.innerHTML = `
                                 <td>#${item.id}</td>
                                 <td>${item.upload_time}</td>
-                                <td>${item.filename.split('_').slice(2).join('_')}</td> <!-- Remove timestamp prefix for display -->
+                                <td>${item.filename.split('_').length > 2 ? item.filename.split('_').slice(2).join('_') : item.filename}</td> <!-- Remove timestamp prefix if exists -->
                                 <td>${item.file_size}</td>
                                 <td>${item.total_packets.toLocaleString()}</td>
                                 <td>

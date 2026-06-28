@@ -15,54 +15,55 @@ try:
 except ImportError:
     from rules import rules_list, detect_time_based_attacks
 
+from scapy.all import PcapReader
+
 def pcap_to_dataframe(pcap_file):
     try:
-        print(f"Reading PCAP file: {pcap_file}")
-        packets = rdpcap(pcap_file)
+        print(f"Reading PCAP file (streaming mode): {pcap_file}")
         data = []
         
-        for i, packet in enumerate(packets):
-            try:
-                row = {
-                    'packet_id': i,
-                    'timestamp': datetime.fromtimestamp(float(packet.time)).strftime('%Y-%m-%d %H:%M:%S.%f'),
-                    'protocol': 'Unknown',
-                    'src_ip': 'Unknown',
-                    'dst_ip': 'Unknown',
-                    'src_port': 0,
-                    'dst_port': 0,
-                    'packet_length': len(packet),
-                    'flags': ''  
-                }
-                
-                if packet.haslayer('IP'):
-                    ip_layer = packet['IP']
-                    row['src_ip'] = ip_layer.src
-                    row['dst_ip'] = ip_layer.dst
-                    row['protocol'] = str(ip_layer.proto)
-                
-                if packet.haslayer('TCP'):
-                    tcp_layer = packet['TCP']
-                    row['src_port'] = int(tcp_layer.sport)
-                    row['dst_port'] = int(tcp_layer.dport)
-                    row['flags'] = str(tcp_layer.flags)
-                    row['protocol'] = 'TCP'
-                
-               
-                elif packet.haslayer('UDP'):
-                    udp_layer = packet['UDP']
-                    row['src_port'] = int(udp_layer.sport)
-                    row['dst_port'] = int(udp_layer.dport)
-                    row['protocol'] = 'UDP'
-                
-                elif packet.haslayer('ICMP'):
-                    row['protocol'] = 'ICMP'
-                
-                data.append(row)
-                
-            except Exception as e:
-                print(f"Error processing packet {i}: {str(e)}")
-                continue
+        with PcapReader(pcap_file) as pcap_reader:
+            for i, packet in enumerate(pcap_reader):
+                try:
+                    row = {
+                        'packet_id': i,
+                        'timestamp': datetime.fromtimestamp(float(packet.time)).strftime('%Y-%m-%d %H:%M:%S.%f'),
+                        'protocol': 'Unknown',
+                        'src_ip': 'Unknown',
+                        'dst_ip': 'Unknown',
+                        'src_port': 0,
+                        'dst_port': 0,
+                        'packet_length': len(packet),
+                        'flags': ''  
+                    }
+                    
+                    if packet.haslayer('IP'):
+                        ip_layer = packet['IP']
+                        row['src_ip'] = ip_layer.src
+                        row['dst_ip'] = ip_layer.dst
+                        row['protocol'] = str(ip_layer.proto)
+                    
+                    if packet.haslayer('TCP'):
+                        tcp_layer = packet['TCP']
+                        row['src_port'] = int(tcp_layer.sport)
+                        row['dst_port'] = int(tcp_layer.dport)
+                        row['flags'] = str(tcp_layer.flags)
+                        row['protocol'] = 'TCP'
+                    
+                    elif packet.haslayer('UDP'):
+                        udp_layer = packet['UDP']
+                        row['src_port'] = int(udp_layer.sport)
+                        row['dst_port'] = int(udp_layer.dport)
+                        row['protocol'] = 'UDP'
+                    
+                    elif packet.haslayer('ICMP'):
+                        row['protocol'] = 'ICMP'
+                    
+                    data.append(row)
+                        
+                except Exception as e:
+                    print(f"Error processing packet {i}: {str(e)}")
+                    continue
         
         df = pd.DataFrame(data)
         
@@ -220,7 +221,8 @@ def analyze_dataframe(df, filename, file_size_bytes, output_path_prefix):
                     ratio_label = f"{int(round((1-ts)*100))}:{int(round(ts*100))}"
                     
                     stratify_param = None
-                    if y.value_counts().min() >= 2:
+                    # Bugfix: Stratify only if there are at least 2 unique classes
+                    if y.nunique() > 1 and y.value_counts().min() >= 2:
                         stratify_param = y
                     
                     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=ts, random_state=42, stratify=stratify_param)

@@ -206,11 +206,14 @@ def get_db_report(upload_id):
                     upload.total_packets = analysis_result.get('summary', {}).get('total_packets', upload.total_packets)
                     upload.malicious_packets = analysis_result.get('summary', {}).get('total_alerts', upload.malicious_packets)
                     
-                    # Update Alerts table: Delete old, Insert new (bulk)
+                    # Update Alerts table: Delete old, Insert new (bulk - limit to 5000 to prevent MySQL timeouts/crashes)
                     try:
                         Alert.query.filter_by(upload_id=upload.id).delete()
                         
                         alerts_list = analysis_result.get('alerts', [])
+                        if len(alerts_list) > 5000:
+                            alerts_list = alerts_list[:5000]
+                            
                         if alerts_list:
                              alert_mappings = []
                              for alert in alerts_list:
@@ -372,8 +375,12 @@ def upload_pcap():
                     db.session.add(pcap_entry)
                     db.session.flush() # Get ID before commit
 
-                    # 2. Save Alerts (Bulk Insert for performance)
+                    # 2. Save Alerts (Bulk Insert for performance - limit to 5000 to prevent MySQL timeouts/crashes)
                     alerts_list = analysis_result.get('alerts', [])
+                    if len(alerts_list) > 5000:
+                        print(f"Limiting Alert table inserts to 5000 (total was {len(alerts_list)}) to prevent database crash.")
+                        alerts_list = alerts_list[:5000]
+                        
                     if alerts_list:
                         alert_mappings = []
                         for alert in alerts_list:

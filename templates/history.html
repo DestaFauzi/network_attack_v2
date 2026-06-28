@@ -111,10 +111,11 @@
                     tbody.innerHTML = '';
 
                     if (data.status === 'success' && data.data.length > 0) {
-                        data.data.forEach(item => {
+                        data.data.forEach((item, index) => {
                             const tr = document.createElement('tr');
+                            const rowNumber = data.data.length - index;
                             tr.innerHTML = `
-                                <td>#${item.id}</td>
+                                <td>#${rowNumber}</td>
                                 <td>${item.upload_time}</td>
                                 <td>${item.filename.split('_').length > 2 ? item.filename.split('_').slice(2).join('_') : item.filename}</td> <!-- Remove timestamp prefix if exists -->
                                 <td>${item.file_size}</td>

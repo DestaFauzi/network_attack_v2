@@ -20,10 +20,17 @@ class PcapFile(db.Model):
     alerts = db.relationship('Alert', backref='pcap_file', lazy=True, cascade="all, delete-orphan")
 
     def to_dict(self):
+        import time
+        from datetime import timedelta
+        # Calculate timezone offset dynamically to convert server time to WIB (UTC+7)
+        local_offset_hours = -time.timezone / 3600 if time.daylight == 0 else -time.altzone / 3600
+        wib_offset = 7 - local_offset_hours
+        wib_time = self.upload_time + timedelta(hours=wib_offset)
+
         return {
             'id': self.id,
             'filename': self.filename,
-            'upload_time': self.upload_time.strftime('%Y-%m-%d %H:%M:%S'),
+            'upload_time': wib_time.strftime('%Y-%m-%d %H:%M:%S'),
             'file_size': self.file_size,
             'total_packets': self.total_packets,
             'malicious_packets': self.malicious_packets,
